@@ -1,3 +1,16 @@
+# V2.7 — Veicoli + Face Detection anonimo
+
+- Distinzione LIVE tra persone, auto, moto e biciclette.
+- Tracker separato per veicoli.
+- Nuovo HUD con conteggi per categoria.
+- BlazeFace per rilevare volti senza identificarne l’identità.
+- ID volto temporanei F1, F2… e associazione alla traccia P quando geometricamente compatibile.
+- Scheda Volti LIVE con miniature non persistenti e selezione/evidenziazione sul video.
+- Cache Service Worker aggiornata a V2.7.
+- Export CSV rinominato per V2.7.
+
+---
+
 # V2.6 — Long Range
 
 - Aggiunte modalità AI: Veloce, Bilanciata e Lunga distanza.

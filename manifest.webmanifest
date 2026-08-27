@@ -1,7 +1,7 @@
 {
-  "name": "PeopleLens AI V2.6",
-  "short_name": "PeopleLens V2.6",
-  "description": "Contapersone, Long Range AI, Pose AI e rilevamento anomalie in locale.",
+  "name": "PeopleLens AI V2.7",
+  "short_name": "PeopleLens V2.7",
+  "description": "Contapersone, veicoli, Long Range AI, Pose AI, volti anonimi e rilevamento anomalie in locale.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,63 +1,33 @@
-# PeopleLens AI V2.6 — Long Range
+# PeopleLens AI V2.7 — Veicoli + Face Detection anonimo
 
-PWA per conteggio persone, tracking anonimo, varchi IN/OUT e rilevamento anomalie direttamente sul dispositivo. Non esegue riconoscimento facciale e non salva fotografie.
+PWA per conteggio persone, tracking anonimo, varchi IN/OUT, Long Range, rilevamento veicoli e anomalie direttamente sul dispositivo.
 
-## Novità V2.6
+## Novità V2.7
 
-### 🔭 Long Range AI
-Tre modalità selezionabili anche durante la visualizzazione LIVE:
+- Riconosce e distingue **persona, auto, moto e bicicletta** con COCO-SSD.
+- Mostra conteggi LIVE separati e riquadri con etichette diverse sul video.
+- Aggiunge **Face Detection** con BlazeFace: i volti sono rilevati ma **non identificati biometricamente**.
+- Ogni volto riceve un ID temporaneo `F1`, `F2`… e, quando possibile, viene associato alla traccia persona `P1`, `P2`… della stessa inquadratura.
+- Pulsante **🙂 Volti** in fullscreen con scheda LIVE dedicata.
+- Selezionando un volto nella scheda o direttamente sul video, il suo riquadro viene evidenziato.
+- Le miniature volto sono ritagli LIVE del fotogramma corrente e **non vengono salvate**.
+- Mantiene tutte le funzioni V2.6: Long Range, Zona AI prioritaria, multi-varco, Pose AI, anomalie, heatmap, tracking e CSV.
 
-- **⚡ Veloce** — analizza il fotogramma completo, ideale per persone vicine e FPS più alti.
-- **⚖ Bilanciata** — fotogramma completo + Zona AI prioritaria; se la zona non è impostata analizza a rotazione anche un settore ingrandito.
-- **🔭 Lunga distanza** — fotogramma completo + Zona AI prioritaria + settori ingranditi a rotazione. È più sensibile alle persone piccole ma usa più potenza e riduce gli FPS.
+## Privacy
 
-Le rilevazioni provenienti da crop ingranditi vengono riportate alle coordinate originali e fuse con NMS/IoU per ridurre i doppi conteggi.
+La V2.7 non contiene riconoscimento dell'identità, confronto con gallerie di persone, nomi automatici o database biometrici. Il modulo volto serve solo a rilevare e seguire anonimamente un volto nella sessione corrente.
 
-### 🎯 Zona AI prioritaria
-Premi **Zona AI** e trascina un rettangolo direttamente sul video (ad esempio marciapiede, cancello o ingresso lontano). In modalità Bilanciata/Lunga distanza quel rettangolo viene analizzato separatamente, così una persona lontana occupa una porzione maggiore dell'immagine data al modello.
+## Installazione GitHub Pages
 
-Sul video:
-- verde = rilevazione fotogramma completo;
-- azzurro `LR🎯` = rilevazione dalla Zona AI prioritaria;
-- viola `LR` = rilevazione da un settore Long Range;
-- giallo = persona selezionata;
-- rosso = possibile condizione critica/caduta.
+Carica tutti i file nella root del repository e abilita GitHub Pages da `Settings > Pages > Deploy from a branch > main / root`. Dopo un aggiornamento chiudi completamente la PWA/browser e riaprila per caricare la cache `peoplelens-shell-v2.7.0`.
 
-### 🔍 Zoom hardware
-Se la fotocamera/browser espone la capability `zoom`, compaiono i controlli **− / x / +** in fullscreen. Lo zoom viene applicato alla traccia video reale tramite `MediaStreamTrack.applyConstraints()`. Su dispositivi che non lo espongono i controlli restano nascosti.
+## Modelli
 
-### 📷 Acquisizione
-La fotocamera richiede fino a 1920×1080 come risoluzione ideale. Il browser/telefono può comunque fornire una risoluzione inferiore.
+- TensorFlow.js
+- COCO-SSD: persone / auto / moto / biciclette / oggetti
+- MoveNet MultiPose: postura
+- BlazeFace: rilevamento volto anonimo
 
-## Funzioni mantenute
+## Nota
 
-- fullscreen automatico all'avvio;
-- tracking anonimo P1, P2…;
-- scheda LIVE e Follow con traiettoria;
-- fino a 6 varchi indipendenti;
-- linea IN/OUT libera, ruotabile e calibrabile con due tocchi;
-- controllo rapido V1/V2/V3… in fullscreen;
-- conteggio IN/OUT e presenti stimati;
-- Pose AI / MoveNet MultiPose;
-- caduta/persona a terra, permanenza, movimento rapido, zona riservata, aumento improvviso, fuori orario, oggetto incustodito, camera oscurata, assembramento, movimento ripetitivo, sosta in zona e direzione vietata;
-- heatmap locale;
-- registro eventi ed esportazione CSV;
-- PWA installabile.
-
-## Suggerimento per persone lontane
-
-1. Inquadra la zona interessata con la fotocamera posteriore.
-2. Premi **🔭 Lunga distanza**.
-3. Premi **🎯 Zona AI** e disegna un rettangolo solo su strada/marciapiede/varco da controllare.
-4. Se disponibile, usa lo zoom hardware senza esagerare per non restringere troppo il campo.
-5. Mantieni inizialmente la confidenza intorno al 50–55%. Abbassarla troppo aumenta i falsi positivi.
-
-## GitHub Pages
-
-Carica il contenuto della cartella `peoplelens-ai` nella root del repository. In **Settings → Pages** usa `Deploy from a branch`, branch `main`, cartella `/ (root)`.
-
-Il Service Worker V2.6 usa la cache `peoplelens-shell-v2.6.0`. Dopo l'aggiornamento chiudi completamente la PWA/browser e riaprila.
-
-## Limiti
-
-Il Long Range migliora la probabilità di rilevare persone piccole, ma non può ricreare dettagli che la fotocamera non ha registrato. Distanza estrema, controluce, occlusioni, mosso e persone di pochissimi pixel possono ancora non essere rilevati. L'app non è un sistema di sicurezza certificato.
+Il rilevamento può sbagliare con distanza elevata, poca luce, occlusioni, forti prospettive o dispositivi poco potenti. Non è un sistema di sicurezza certificato.

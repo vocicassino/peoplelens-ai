@@ -9,12 +9,12 @@
   <link rel="icon" href="./icons/icon-192.png" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <link rel="stylesheet" href="./styles.css" />
-  <title>PeopleLens AI V2.6</title>
+  <title>PeopleLens AI V2.7</title>
 </head>
 <body>
   <header class="app-header">
     <div>
-      <div class="brand">PeopleLens <span>AI</span> <em>V2.6</em></div>
+      <div class="brand">PeopleLens <span>AI</span> <em>V2.7</em></div>
       <div class="tagline">Conta le persone, non le identità.</div>
     </div>
     <div class="header-actions">
@@ -37,6 +37,7 @@
         <div id="fpsBadge" class="fps-badge hidden">0 FPS AI</div>
         <div id="poseBadge" class="pose-badge hidden">POSE</div>
         <div id="scanBadge" class="scan-badge hidden">AI FULL</div>
+        <div id="objectHud" class="object-hud hidden" aria-live="polite"><span>👤 <b id="hudPeople">0</b></span><span>🚗 <b id="hudCars">0</b></span><span>🏍️ <b id="hudMotorcycles">0</b></span><span>🚲 <b id="hudBicycles">0</b></span><span>🙂 <b id="hudFaces">0</b></span></div>
         <div id="cameraZoom" class="camera-zoom hidden" aria-label="Zoom fotocamera"><button id="zoomOutBtn" type="button" aria-label="Riduci zoom">−</button><strong id="zoomLabel">1×</strong><button id="zoomInBtn" type="button" aria-label="Aumenta zoom">＋</button></div>
         <div id="priorityHint" class="priority-hint hidden"><b>ZONA AI PRIORITARIA</b><span>Trascina un rettangolo sulla zona lontana da analizzare meglio.</span></div>
         <button id="exitViewBtn" class="exit-view hidden" type="button" aria-label="Esci dalla visualizzazione a schermo intero">✕</button>
@@ -77,6 +78,10 @@
           <div id="personFlags" class="person-flags"><span>Nessuna anomalia</span></div>
           <div id="personTrackStatus" class="person-track-status">Tocca un riquadro persona per seguirla.</div>
         </aside>
+        <aside id="faceShelf" class="face-shelf hidden" aria-live="polite">
+          <div class="face-shelf-head"><div><small>VOLTI LIVE · ANONIMI</small><strong id="faceShelfCount">0 rilevati</strong></div><button id="faceShelfClose" type="button" aria-label="Chiudi volti">✕</button></div>
+          <div id="faceShelfList" class="face-shelf-list"></div>
+        </aside>
       </div>
 
       <div class="camera-controls">
@@ -87,8 +92,9 @@
         <button id="gateBtn" class="ghost" type="button" disabled>⌁ Calibra varco</button>
         <button id="priorityBtn" class="ghost" type="button" disabled>🎯 Zona AI</button>
         <button id="aiModeBtn" class="ghost" type="button" disabled>⚖ Bilanciata</button>
+        <button id="facesBtn" class="ghost" type="button" disabled>🙂 Volti</button>
       </div>
-      <p class="privacy-note">🔒 Elaborazione sul dispositivo. Nessun volto riconosciuto, nessuna foto salvata.</p>
+      <p class="privacy-note">🔒 Elaborazione sul dispositivo. I volti vengono solo rilevati e tracciati con ID anonimi: nessuna identità biometrica e nessuna foto salvata.</p>
     </section>
 
     <section class="stats-grid">
@@ -100,6 +106,16 @@
       <article class="stat card"><span>Affollamento</span><strong id="crowdPercent">0%</strong><div class="meter"><i id="crowdMeter"></i></div></article>
       <article class="stat card"><span>Permanenza media</span><strong id="avgDwell">—</strong><small>tracce completate</small></article>
       <article class="stat card"><span>Pose AI</span><strong id="poseStatus">—</strong><small>MoveNet MultiPose</small></article>
+      <article class="stat card"><span>Auto</span><strong id="carsCount">0</strong><small>visibili ora</small></article>
+      <article class="stat card"><span>Moto</span><strong id="motorcyclesCount">0</strong><small>visibili ora</small></article>
+      <article class="stat card"><span>Biciclette</span><strong id="bicyclesCount">0</strong><small>visibili ora</small></article>
+      <article class="stat card"><span>Volti</span><strong id="facesCount">0</strong><small>rilevati anonimamente</small></article>
+    </section>
+
+    <section id="faceSection" class="card face-section">
+      <div class="section-head"><div><h2>Volti rilevati · anonimi</h2><p>Rilevamento locale: F1, F2… possono essere associati alla traccia P corrispondente, ma non viene determinata l’identità reale.</p></div><span id="faceModelStatus" class="pill warn">Face AI…</span></div>
+      <div id="faceGallery" class="face-gallery"><div class="empty-log">Nessun volto rilevato.</div></div>
+      <p class="face-privacy">Le miniature sono ritagli LIVE del fotogramma corrente e non vengono memorizzate. Seleziona un volto per evidenziarlo nel video.</p>
     </section>
 
     <section id="alertPanel" class="alert-panel card ok">
@@ -197,7 +213,7 @@
 
     <section class="card info-card">
       <h2>Limiti importanti</h2>
-      <p>PeopleLens AI V2.6 è uno strumento di supporto: conteggio e anomalie possono sbagliare per occlusioni, luce, prospettiva o prestazioni del telefono. “Possibile caduta”, “movimento rapido” e “oggetto incustodito” non sostituiscono sistemi di sicurezza certificati né la verifica umana.</p>
+      <p>PeopleLens AI V2.7 è uno strumento di supporto: conteggio e anomalie possono sbagliare per occlusioni, luce, prospettiva o prestazioni del telefono. “Possibile caduta”, “movimento rapido” e “oggetto incustodito” non sostituiscono sistemi di sicurezza certificati né la verifica umana. Il modulo volto effettua solo rilevamento/tracking anonimo e non riconoscimento dell’identità.</p>
     </section>
   </main>
 
@@ -206,6 +222,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.1.0/dist/blazeface.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
