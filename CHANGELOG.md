@@ -1,3 +1,11 @@
+# PeopleLens AI V2.8
+
+- Conteggio IN/OUT separato per auto, moto e biciclette.
+- Statistiche per singolo varco e totali di sessione.
+- Riepilogo giornaliero ricostruito dal registro locale.
+- CSV esteso con classe/direzione veicolo e contatori dedicati.
+- Tracking veicoli aggiornato con posizione precedente e stato varco.
+
 # V2.7 — Veicoli + Face Detection anonimo
 
 - Distinzione LIVE tra persone, auto, moto e biciclette.

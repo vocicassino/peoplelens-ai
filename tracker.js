@@ -130,10 +130,10 @@ export class ObjectTracker {
       for(const id of unused){ const t=this.tracks.get(id); if(t.class!==d.class) continue; const dist=Math.hypot(cx-t.cx,cy-t.cy); if(dist<best&&dist<=maxDist){best=dist;bestId=id;} }
       if(bestId!=null){
         unused.delete(bestId); const t=this.tracks.get(bestId); const moved=Math.hypot(cx-t.cx,cy-t.cy)/diag;
-        const updated={...t,bbox:d.bbox,score:d.score,cx,cy,lastSeen:now,stationarySince:moved>0.01?now:t.stationarySince};
+        const updated={...t,bbox:d.bbox,score:d.score,prevCx:t.cx,prevCy:t.cy,cx,cy,lastSeen:now,ageMs:now-t.firstSeen,stationarySince:moved>0.01?now:t.stationarySince};
         this.tracks.set(bestId,updated); result.push(updated);
       } else {
-        const id=this.nextId++; const t={id,class:d.class,bbox:d.bbox,score:d.score,cx,cy,firstSeen:now,lastSeen:now,stationarySince:now}; this.tracks.set(id,t); result.push(t);
+        const id=this.nextId++; const t={id,class:d.class,bbox:d.bbox,score:d.score,cx,cy,prevCx:cx,prevCy:cy,firstSeen:now,lastSeen:now,ageMs:0,stationarySince:now,gateStates:{}}; this.tracks.set(id,t); result.push(t);
       }
     }
     for(const [id,t] of this.tracks){ if(now-t.lastSeen>this.maxAgeMs) this.tracks.delete(id); }

@@ -19,7 +19,9 @@ const els = {
   personDwell: $('#personDwell'), personSpeed: $('#personSpeed'), personPose: $('#personPose'), personConfidence: $('#personConfidence'), personCrossing: $('#personCrossing'), personPosition: $('#personPosition'), personFlags: $('#personFlags'), personTrackStatus: $('#personTrackStatus'),
   followBtn: $('#followBtn'), personPath: $('#personPath'), personFollowState: $('#personFollowState'), priorityHelp: $('#priorityHelp'), priorityHelpText: $('#priorityHelpText'), clearPriorityBtn: $('#clearPriorityBtn'),
   facesBtn: $('#facesBtn'), faceShelf: $('#faceShelf'), faceShelfClose: $('#faceShelfClose'), faceShelfList: $('#faceShelfList'), faceShelfCount: $('#faceShelfCount'), faceGallery: $('#faceGallery'), faceModelStatus: $('#faceModelStatus'),
-  carsCount: $('#carsCount'), motorcyclesCount: $('#motorcyclesCount'), bicyclesCount: $('#bicyclesCount'), facesCount: $('#facesCount'), objectHud: $('#objectHud'), hudPeople: $('#hudPeople'), hudCars: $('#hudCars'), hudMotorcycles: $('#hudMotorcycles'), hudBicycles: $('#hudBicycles'), hudFaces: $('#hudFaces')
+  carsCount: $('#carsCount'), motorcyclesCount: $('#motorcyclesCount'), bicyclesCount: $('#bicyclesCount'), facesCount: $('#facesCount'), objectHud: $('#objectHud'), hudPeople: $('#hudPeople'), hudCars: $('#hudCars'), hudMotorcycles: $('#hudMotorcycles'), hudBicycles: $('#hudBicycles'), hudFaces: $('#hudFaces'),
+  carEntries: $('#carEntries'), carExits: $('#carExits'), motorcycleEntries: $('#motorcycleEntries'), motorcycleExits: $('#motorcycleExits'), bicycleEntries: $('#bicycleEntries'), bicycleExits: $('#bicycleExits'),
+  carTodayEntries: $('#carTodayEntries'), carTodayExits: $('#carTodayExits'), motorcycleTodayEntries: $('#motorcycleTodayEntries'), motorcycleTodayExits: $('#motorcycleTodayExits'), bicycleTodayEntries: $('#bicycleTodayEntries'), bicycleTodayExits: $('#bicycleTodayExits')
 };
 
 let model=null, poseDetector=null, poseReady=false, poseLoadFailed=false, latestPoses=[];
@@ -35,6 +37,10 @@ let draggingLine=false, linePointerId=null, lineDragMode=null, lineDragStart=nul
 let calibrateMode=false, calibrationPoints=[], calibrationPointerId=null;
 let priorityDrawMode=false, priorityStart=null, tempPriorityZone=null, priorityPointerId=null;
 let gateSessionStats=new Map();
+const emptyVehicleStats=()=>({car:{entries:0,exits:0},motorcycle:{entries:0,exits:0},bicycle:{entries:0,exits:0}});
+let vehicleTotals=emptyVehicleStats(), dailyVehicleTotals=emptyVehicleStats(), gateVehicleStats=new Map();
+function gateVehicleStat(gateId){if(!gateVehicleStats.has(gateId))gateVehicleStats.set(gateId,emptyVehicleStats());return gateVehicleStats.get(gateId);}
+function vehicleStatsInline(stats){return `🚗 ${stats.car.entries}/${stats.car.exits} · 🏍 ${stats.motorcycle.entries}/${stats.motorcycle.exits} · 🚲 ${stats.bicycle.entries}/${stats.bicycle.exits}`;}
 let cropCanvas=document.createElement('canvas'), tileCursor=0, lastScanSources=['FULL'];
 let cameraZoomCaps=null, cameraZoomValue=1;
 const bagClasses=new Set(['backpack','handbag','suitcase']);
@@ -117,7 +123,7 @@ function updateOutputs(){
 }
 function renderGateSummary(){
   if(!els.gateSummary)return;
-  els.gateSummary.innerHTML=settings.gates.map((g,i)=>{const st=gateSessionStats.get(g.id)||{entries:0,exits:0};return `<button type="button" data-gate-pick="${escapeHtml(g.id)}" class="${g.id===settings.activeGateId?'active':''} ${g.enabled?'':'disabled'}"><span>${i+1}</span><b>${escapeHtml(g.name)}</b><small>IN ${st.entries} · OUT ${st.exits}</small></button>`}).join('');
+  els.gateSummary.innerHTML=settings.gates.map((g,i)=>{const st=gateSessionStats.get(g.id)||{entries:0,exits:0},vs=gateVehicleStat(g.id);return `<button type="button" data-gate-pick="${escapeHtml(g.id)}" class="${g.id===settings.activeGateId?'active':''} ${g.enabled?'':'disabled'}"><span>${i+1}</span><b>${escapeHtml(g.name)}</b><small>👤 IN ${st.entries} · OUT ${st.exits}</small><small class="gate-vehicle-mini">${vehicleStatsInline(vs)}</small></button>`}).join('');
   els.gateSummary.querySelectorAll('[data-gate-pick]').forEach(btn=>btn.addEventListener('click',()=>setActiveGate(btn.dataset.gatePick,true)));
 }
 function renderGateQuickMap(){
@@ -132,7 +138,7 @@ function renderGateQuickMap(){
     const selected=g.id===settings.activeGateId;
     return `<div class="gate-quick-item ${selected?'active':''} ${g.enabled?'':'disabled'}" data-gate-id="${escapeHtml(g.id)}">
       <button type="button" class="gate-quick-pick" data-gate-quick-pick="${escapeHtml(g.id)}" aria-pressed="${selected}" title="Seleziona ${escapeHtml(g.name)}">
-        <span class="gate-quick-code">V${i+1}</span><span class="gate-quick-name">${escapeHtml(g.name)}</span><small>IN ${st.entries} · OUT ${st.exits}</small>
+        <span class="gate-quick-code">V${i+1}</span><span class="gate-quick-name">${escapeHtml(g.name)}</span><small>👤 ${st.entries}/${st.exits} · ${vehicleStatsInline(gateVehicleStat(g.id))}</small>
       </button>
       <button type="button" class="gate-quick-toggle" data-gate-quick-toggle="${escapeHtml(g.id)}" aria-pressed="${g.enabled}" aria-label="${g.enabled?'Disattiva':'Attiva'} ${escapeHtml(g.name)}" title="${g.enabled?'Disattiva':'Attiva'} conteggio">${g.enabled?'⏻':'○'}</button>
     </div>`;
@@ -170,7 +176,7 @@ function setDetectionMode(mode,announce=true){
 function cycleDetectionMode(){const list=['fast','balanced','long'],i=list.indexOf(settings.detectionMode);setDetectionMode(list[(i+1)%list.length]);}
 
 async function loadModels(){
-  els.modelBadge.textContent='Caricamento AI V2.7…'; els.modelBadge.className='pill warn';
+  els.modelBadge.textContent='Caricamento AI V2.8…'; els.modelBadge.className='pill warn';
   try{
     await tf.ready(); try{await tf.setBackend('webgl')}catch{}
     model=await cocoSsd.load({base:'lite_mobilenet_v2'});
@@ -191,7 +197,7 @@ async function loadModels(){
     console.warn('Face detection non disponibile:',err); faceLoadFailed=true; faceReady=false;
     if(els.faceModelStatus){els.faceModelStatus.textContent='Face AI non disponibile';els.faceModelStatus.className='pill warn';}
   }
-  els.modelBadge.textContent=`AI V2.7 pronta · ${tf.getBackend()}${faceReady?' · FACE':''}`; els.modelBadge.className='pill ok';
+  els.modelBadge.textContent=`AI V2.8 pronta · ${tf.getBackend()}${faceReady?' · FACE':''}`; els.modelBadge.className='pill ok';
 }
 
 async function enterImmersive(){
@@ -222,7 +228,7 @@ async function startCamera(){
 function stopTracks(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null} }
 async function stopCamera(){ cancelGateCalibration(); cancelPriorityDraw(); selectedTrackId=null; followTrackId=null; closePersonInspector(); running=false; stopTracks(); els.video.srcObject=null; els.startBtn.disabled=false; els.stopBtn.disabled=true; els.switchBtn.disabled=true; els.zoneBtn.disabled=true; if(els.gateBtn)els.gateBtn.disabled=true; if(els.priorityBtn)els.priorityBtn.disabled=true; if(els.aiModeBtn)els.aiModeBtn.disabled=true; if(els.facesBtn)els.facesBtn.disabled=true; els.emptyCamera.classList.remove('hidden'); els.liveBadge.classList.add('hidden'); els.fpsBadge.classList.add('hidden'); els.poseBadge.classList.add('hidden'); els.scanBadge?.classList.add('hidden'); els.cameraZoom?.classList.add('hidden'); els.fullAlert.classList.add('hidden'); els.gateQuickMap?.classList.add('hidden'); els.objectHud?.classList.add('hidden'); closeFaceShelf(); clearOverlay(); await exitImmersive(); }
 async function switchCamera(){ currentFacing=currentFacing==='environment'?'user':'environment'; if(!running)return; try{stopTracks(); stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:currentFacing},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:24,max:30}}});els.video.srcObject=stream;await els.video.play();personTracker.reset();objectTracker.reset();vehicleTracker.reset();faceTracker.reset();currentVehicleTracks=[];currentFaceTracks=[];latestPoses=[];selectedTrackId=null;followTrackId=null;selectedFaceId=null;closePersonInspector();closeFaceShelf();resizeCanvas();ensureEditableLineVisible(true);await configureCameraZoom();resetLineSides();toast(currentFacing==='environment'?'Fotocamera posteriore':'Fotocamera anteriore');}catch(err){toast('Impossibile cambiare fotocamera.');console.error(err)} }
-function resetSession(){ selectedTrackId=null; followTrackId=null; selectedFaceId=null; closePersonInspector(); closeFaceShelf(); gateSessionStats=new Map(settings.gates.map(g=>[g.id,{entries:0,exits:0}])); entries=0; exits=0; peak=0; peakAt=null; occupancy=settings.baseOccupancy; visible=0; recentCounts=[]; personTracker.reset();objectTracker.reset();vehicleTracker.reset();faceTracker.reset();currentVehicleTracks=[];currentFaceTracks=[];anomalyCooldown.clear();activeStates.clear();clusterSince=null;dwellTotalMs=0;dwellSamples=0;currentTracks=[];latestPoses=[];heatGrid.fill(0);drawHeatmap();updateStats();renderGateQuickMap(); }
+function resetSession(){ selectedTrackId=null; followTrackId=null; selectedFaceId=null; closePersonInspector(); closeFaceShelf(); gateSessionStats=new Map(settings.gates.map(g=>[g.id,{entries:0,exits:0}])); gateVehicleStats=new Map(settings.gates.map(g=>[g.id,emptyVehicleStats()])); vehicleTotals=emptyVehicleStats(); entries=0; exits=0; peak=0; peakAt=null; occupancy=settings.baseOccupancy; visible=0; recentCounts=[]; personTracker.reset();objectTracker.reset();vehicleTracker.reset();faceTracker.reset();currentVehicleTracks=[];currentFaceTracks=[];anomalyCooldown.clear();activeStates.clear();clusterSince=null;dwellTotalMs=0;dwellSamples=0;currentTracks=[];latestPoses=[];heatGrid.fill(0);drawHeatmap();updateStats();renderGateQuickMap(); }
 
 function resizeCanvas(){ const v=els.video,c=els.overlay; if(!v.videoWidth)return; if(c.width!==v.videoWidth||c.height!==v.videoHeight){c.width=v.videoWidth;c.height=v.videoHeight;} }
 function clearOverlay(){ const c=els.overlay; c.getContext('2d').clearRect(0,0,c.width,c.height); }
@@ -245,6 +251,7 @@ async function inferFrame(){
   const tracks=personTracker.update(persons,els.overlay.width,els.overlay.height,now);
   const objTracks=objectTracker.update(objects,els.overlay.width,els.overlay.height,now);
   currentVehicleTracks=vehicleTracker.update(vehicles,els.overlay.width,els.overlay.height,now);
+  processVehicleCrossings(currentVehicleTracks,now);
   const ended=personTracker.drainEnded(); for(const t of ended){ if(t.ageMs>1200){dwellTotalMs+=t.ageMs;dwellSamples++;} }
 
   if(poseReady && poseDetector && now-lastPoseInference>=650){
@@ -338,10 +345,8 @@ function gateTrackState(t,gate){
 }
 function resetLineSides(){
   const now=performance.now();
-  for(const t of currentTracks){
-    if(!t.gateStates)t.gateStates={};
-    for(const gate of settings.gates){const info=lineSideInfo(t.cx,t.cy,gate);t.gateStates[gate.id]={side:info.side||1,lastCrossAt:now};}
-  }
+  const resetTracks=(tracks)=>{for(const t of tracks){if(!t.gateStates)t.gateStates={};for(const gate of settings.gates){const info=lineSideInfo(t.cx,t.cy,gate);t.gateStates[gate.id]={side:info.side||1,lastCrossAt:now};}}};
+  resetTracks(currentTracks);resetTracks(currentVehicleTracks);
 }
 function processCrossings(tracks,now){
   for(const t of tracks){
@@ -365,6 +370,30 @@ function processCrossings(tracks,now){
         }
         t.lastDirection=direction;t.lastCrossAt=now;t.lastCrossEpoch=Date.now();t.lastGateId=gate.id;t.lastGateName=gate.name;t.crossingCount=(t.crossingCount||0)+1;state.lastCrossAt=now;
         renderGateSummary();renderGateQuickMap();
+      }
+      state.side=side;
+    }
+  }
+}
+
+function processVehicleCrossings(tracks,now){
+  for(const t of tracks){
+    if(!vehicleClasses.has(t.class))continue;
+    for(const gate of settings.gates){
+      if(!gate.enabled)continue;
+      const state=gateTrackState(t,gate),info=lineSideInfo(t.cx,t.cy,gate),side=info.side;
+      if(side===0)continue;
+      if(state.side==null){state.side=side;continue;}
+      if(draggingLine||calibrateMode){state.side=side;continue;}
+      const crossed=side!==state.side&&movementCrossesGate(t,gate);
+      if(crossed && (t.ageMs||0)>350 && now-state.lastCrossAt>1600){
+        const direction=state.side<side?'forward':'reverse',isEntry=direction===gate.entryDirection;
+        const total=vehicleTotals[t.class],gst=gateVehicleStat(gate.id)[t.class];
+        if(isEntry){total.entries++;gst.entries++;}else{total.exits++;gst.exits++;}
+        const name=vehicleNames[t.class],symbol=vehicleEmoji[t.class],flow=isEntry?'IN':'OUT';
+        t.lastCrossType=flow;t.lastCrossAt=now;t.lastCrossEpoch=Date.now();t.lastGateId=gate.id;t.lastGateName=gate.name;state.lastCrossAt=now;
+        record(`${name} ${isEntry?'ingresso':'uscita'}`,`${symbol} ${name} ${flow} · ${gate.name}`,'info',{gateId:gate.id,gateName:gate.name,vehicleClass:t.class,vehicleDirection:flow,vehicleTrackId:t.id});
+        renderGateSummary();renderGateQuickMap();updateStats();
       }
       state.side=side;
     }
@@ -618,6 +647,12 @@ function updateStats(){
   els.avgDwell.textContent=dwellSamples?formatDuration(dwellTotalMs/dwellSamples):'—'; els.poseStatus.textContent=poseReady?'ON':poseLoadFailed?'Fallback':'…';
   const cars=currentVehicleTracks.filter(v=>v.class==='car').length,motos=currentVehicleTracks.filter(v=>v.class==='motorcycle').length,bikes=currentVehicleTracks.filter(v=>v.class==='bicycle').length,faces=currentFaceTracks.length;
   if(els.carsCount)els.carsCount.textContent=cars;if(els.motorcyclesCount)els.motorcyclesCount.textContent=motos;if(els.bicyclesCount)els.bicyclesCount.textContent=bikes;if(els.facesCount)els.facesCount.textContent=faces;
+  if(els.carEntries)els.carEntries.textContent=vehicleTotals.car.entries;if(els.carExits)els.carExits.textContent=vehicleTotals.car.exits;
+  if(els.motorcycleEntries)els.motorcycleEntries.textContent=vehicleTotals.motorcycle.entries;if(els.motorcycleExits)els.motorcycleExits.textContent=vehicleTotals.motorcycle.exits;
+  if(els.bicycleEntries)els.bicycleEntries.textContent=vehicleTotals.bicycle.entries;if(els.bicycleExits)els.bicycleExits.textContent=vehicleTotals.bicycle.exits;
+  if(els.carTodayEntries)els.carTodayEntries.textContent=dailyVehicleTotals.car.entries;if(els.carTodayExits)els.carTodayExits.textContent=dailyVehicleTotals.car.exits;
+  if(els.motorcycleTodayEntries)els.motorcycleTodayEntries.textContent=dailyVehicleTotals.motorcycle.entries;if(els.motorcycleTodayExits)els.motorcycleTodayExits.textContent=dailyVehicleTotals.motorcycle.exits;
+  if(els.bicycleTodayEntries)els.bicycleTodayEntries.textContent=dailyVehicleTotals.bicycle.entries;if(els.bicycleTodayExits)els.bicycleTodayExits.textContent=dailyVehicleTotals.bicycle.exits;
   els.hudVisible.textContent=visible;els.hudOccupancy.textContent=occupancy;els.hudEntries.textContent=entries;els.hudExits.textContent=exits;
   if(els.hudPeople)els.hudPeople.textContent=visible;if(els.hudCars)els.hudCars.textContent=cars;if(els.hudMotorcycles)els.hudMotorcycles.textContent=motos;if(els.hudBicycles)els.hudBicycles.textContent=bikes;if(els.hudFaces)els.hudFaces.textContent=faces;
 }
@@ -648,17 +683,20 @@ function drawHeatmap(){
 }
 
 async function record(type,message,severity='info',meta={}){
-  const event={ts:Date.now(),type,message,severity,visible,occupancy,entries,exits,...meta}; try{await addEvent(event)}catch{} renderEvents(); }
+  const event={ts:Date.now(),type,message,severity,visible,occupancy,entries,exits,carIn:vehicleTotals.car.entries,carOut:vehicleTotals.car.exits,motorcycleIn:vehicleTotals.motorcycle.entries,motorcycleOut:vehicleTotals.motorcycle.exits,bicycleIn:vehicleTotals.bicycle.entries,bicycleOut:vehicleTotals.bicycle.exits,...meta}; try{await addEvent(event)}catch{} renderEvents(); }
 async function renderEvents(){
-  let events=[];try{events=await getEvents(200)}catch{} if(!events.length){els.eventLog.innerHTML='<div class="empty-log">Nessun evento registrato.</div>';return}
+  let all=[];try{all=await getEvents(10000)}catch{}
+  dailyVehicleTotals=emptyVehicleStats();const now=new Date(),dayKey=`${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+  for(const e of all){if(!e.vehicleClass||!vehicleClasses.has(e.vehicleClass))continue;const d=new Date(e.ts),k=`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;if(k!==dayKey)continue;const s=dailyVehicleTotals[e.vehicleClass];if(e.vehicleDirection==='IN')s.entries++;else if(e.vehicleDirection==='OUT')s.exits++;}
+  updateStats();const events=all.slice(0,200);if(!events.length){els.eventLog.innerHTML='<div class="empty-log">Nessun evento registrato.</div>';return}
   els.eventLog.innerHTML=events.map(e=>`<div class="event-row"><time>${new Date(e.ts).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</time><span class="type">${escapeHtml(e.type)}</span><span>${escapeHtml(e.message)}</span><span class="sev ${e.severity}">${e.severity.toUpperCase()}</span></div>`).join('');
 }
 function escapeHtml(s){return String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))}
 function toast(msg){els.toast.textContent=msg;els.toast.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>els.toast.classList.remove('show'),2600)}
 
 async function exportCsv(){
-  const ev=await getEvents(10000);const rows=[['data','ora','tipo','gravita','varco','messaggio','visibili','presenti_stimati','entrati','usciti'],...ev.slice().reverse().map(e=>{const d=new Date(e.ts);return[d.toLocaleDateString('it-IT'),d.toLocaleTimeString('it-IT'),e.type,e.severity,e.gateName||'',e.message,e.visible,e.occupancy,e.entries,e.exits]})];
-  const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='peoplelens-v2.7-eventi-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  const ev=await getEvents(10000);const rows=[['data','ora','tipo','gravita','varco','classe_veicolo','direzione_veicolo','messaggio','visibili_persone','presenti_stimati','persone_entrate','persone_uscite','auto_in','auto_out','moto_in','moto_out','bici_in','bici_out'],...ev.slice().reverse().map(e=>{const d=new Date(e.ts);return[d.toLocaleDateString('it-IT'),d.toLocaleTimeString('it-IT'),e.type,e.severity,e.gateName||'',e.vehicleClass||'',e.vehicleDirection||'',e.message,e.visible,e.occupancy,e.entries,e.exits,e.carIn??'',e.carOut??'',e.motorcycleIn??'',e.motorcycleOut??'',e.bicycleIn??'',e.bicycleOut??'']})];
+  const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='peoplelens-v2.8-eventi-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
 function getObjectFitTransform(){
@@ -768,10 +806,10 @@ async function changeCameraZoom(dir){if(!cameraZoomCaps)return;const track=strea
 
 function addGate(){
   if(settings.gates.length>=6){toast('Puoi configurare al massimo 6 varchi.');return;}
-  const idx=settings.gates.length;const gate=makeGate(idx);settings.gates.push(gate);settings.activeGateId=gate.id;gateSessionStats.set(gate.id,{entries:0,exits:0});if(running)ensureEditableLineVisible(false);saveSettings();hydrateGateControls();resetLineSides();drawGuides(currentTracks);toast(`${gate.name} creato. Ora puoi calibrarlo.`);
+  const idx=settings.gates.length;const gate=makeGate(idx);settings.gates.push(gate);settings.activeGateId=gate.id;gateSessionStats.set(gate.id,{entries:0,exits:0});gateVehicleStats.set(gate.id,emptyVehicleStats());if(running)ensureEditableLineVisible(false);saveSettings();hydrateGateControls();resetLineSides();drawGuides(currentTracks);toast(`${gate.name} creato. Ora puoi calibrarlo.`);
 }
 function deleteActiveGate(){
-  if(settings.gates.length<=1){toast('Deve rimanere almeno un varco.');return;}const g=activeGate();settings.gates=settings.gates.filter(x=>x.id!==g.id);gateSessionStats.delete(g.id);settings.activeGateId=settings.gates[0].id;saveSettings();hydrateGateControls();resetLineSides();drawGuides(currentTracks);toast(`${g.name} eliminato.`);
+  if(settings.gates.length<=1){toast('Deve rimanere almeno un varco.');return;}const g=activeGate();settings.gates=settings.gates.filter(x=>x.id!==g.id);gateSessionStats.delete(g.id);gateVehicleStats.delete(g.id);settings.activeGateId=settings.gates[0].id;saveSettings();hydrateGateControls();resetLineSides();drawGuides(currentTracks);toast(`${g.name} eliminato.`);
 }
 function resetActiveGate(){
   const g=activeGate();if(!g)return;const vb=running?visibleNormalizedBounds():{minX:.08,maxX:.92,minY:.05,maxY:.95};const y=Math.min(vb.maxY,Math.max(vb.minY,.62));g.a={x:vb.minX,y};g.b={x:vb.maxX,y};saveSettings();updateOutputs();resetLineSides();drawGuides(currentTracks);toast(`${g.name} ripristinato orizzontale.`);
@@ -791,11 +829,11 @@ els.gateEnabled?.addEventListener('change',e=>{const g=activeGate();if(!g)return
 $('#entryDirection')?.addEventListener('change',e=>{const g=activeGate();if(!g)return;g.entryDirection=e.target.value==='reverse'?'reverse':'forward';saveSettings();resetLineSides();drawGuides(currentTracks)});
 $('#allowedDirection')?.addEventListener('change',e=>{const g=activeGate();if(!g)return;g.allowedDirection=e.target.value==='reverse'?'reverse':'forward';saveSettings();resetLineSides();drawGuides(currentTracks)});
 els.addGateBtn?.addEventListener('click',addGate);els.deleteGateBtn?.addEventListener('click',deleteActiveGate);$('#resetLineBtn')?.addEventListener('click',resetActiveGate);
-$('#resetSettingsBtn').addEventListener('click',()=>{settings={...DEFAULT_SETTINGS,gates:[makeGate(0,DEFAULT_SETTINGS.gates?.[0])],activeGateId:'gate-1'};gateSessionStats=new Map(settings.gates.map(g=>[g.id,{entries:0,exits:0}]));cancelPriorityDraw();if(running)ensureEditableLineVisible(true);else saveSettings();hydrateSettings();if(running)resetLineSides();drawGuides(currentTracks);toast('Impostazioni ripristinate.');});
+$('#resetSettingsBtn').addEventListener('click',()=>{settings={...DEFAULT_SETTINGS,gates:[makeGate(0,DEFAULT_SETTINGS.gates?.[0])],activeGateId:'gate-1'};gateSessionStats=new Map(settings.gates.map(g=>[g.id,{entries:0,exits:0}]));gateVehicleStats=new Map(settings.gates.map(g=>[g.id,emptyVehicleStats()]));vehicleTotals=emptyVehicleStats();cancelPriorityDraw();if(running)ensureEditableLineVisible(true);else saveSettings();hydrateSettings();if(running)resetLineSides();drawGuides(currentTracks);toast('Impostazioni ripristinate.');});
 $('#resetHeatmapBtn').addEventListener('click',()=>{heatGrid.fill(0);drawHeatmap();toast('Heatmap azzerata.');});
 $('#exportBtn').addEventListener('click',exportCsv);$('#clearBtn').addEventListener('click',async()=>{await clearEvents();renderEvents();toast('Registro azzerato.');});
 window.addEventListener('resize',()=>{resizeCanvas();if(running){ensureEditableLineVisible(true);resetLineSides();drawGuides(currentTracks);}drawHeatmap()});window.addEventListener('beforeunload',stopTracks);
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;els.installBtn.classList.remove('hidden')});els.installBtn.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;els.installBtn.classList.add('hidden')});
 if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.warn));
 
-gateSessionStats=new Map(settings.gates.map(g=>[g.id,{entries:0,exits:0}]));hydrateSettings();renderEvents();drawHeatmap();loadModels();updateAnomalyStates();updateAlertPanel();
+gateSessionStats=new Map(settings.gates.map(g=>[g.id,{entries:0,exits:0}]));gateVehicleStats=new Map(settings.gates.map(g=>[g.id,emptyVehicleStats()]));hydrateSettings();renderEvents();drawHeatmap();loadModels();updateAnomalyStates();updateAlertPanel();

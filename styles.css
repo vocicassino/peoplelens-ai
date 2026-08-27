@@ -130,3 +130,18 @@ body.camera-immersive .camera-controls button{flex:0 0 auto}
 .face-shelf{position:absolute;z-index:15;left:12px;right:12px;top:108px;max-height:42%;overflow:auto;padding:10px;border-radius:16px;background:rgba(5,15,27,.9);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(14px)}.face-shelf-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}.face-shelf-head small{display:block;font-size:.55rem;color:#9fb1c5;font-weight:900;letter-spacing:.08em}.face-shelf-head strong{display:block;font-size:.85rem;margin-top:2px}.face-shelf-head button{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:#13243b;color:#fff}.face-shelf-list{display:flex;gap:8px;overflow-x:auto;padding-bottom:3px}.face-mini{flex:0 0 112px;border:1px solid rgba(255,255,255,.12);border-radius:13px;padding:6px;background:rgba(16,31,51,.82);color:#fff;text-align:left}.face-mini.selected{border-color:#ffd166}.face-mini canvas{display:block;width:100%;aspect-ratio:1/1;border-radius:9px;background:#06101d}.face-mini b{display:block;margin-top:5px;font-size:.72rem}.face-mini small{display:block;color:#9fb1c5;font-size:.56rem;margin-top:1px}
 body.camera-immersive .face-shelf.hidden{display:none!important}
 @media(max-width:560px){.object-hud{top:66px;right:8px;max-width:76%;gap:3px}.object-hud span{font-size:.56rem;padding:4px 6px}.face-gallery{grid-template-columns:1fr 1fr}.face-card{grid-template-columns:46px 1fr;padding:7px}.face-thumb{width:46px;height:46px}.face-shelf{top:100px;left:8px;right:8px;max-height:38%}}
+
+
+/* V2.8 · Transiti veicoli */
+.vehicle-transit-section{overflow:hidden}
+.vehicle-transit-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.vehicle-transit-card{display:flex;align-items:center;gap:13px;min-width:0;padding:15px;border:1px solid var(--border,#263955);border-radius:18px;background:rgba(10,27,47,.62)}
+.vehicle-transit-card .vehicle-icon{font-size:30px;line-height:1;flex:0 0 auto}
+.vehicle-transit-card div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.vehicle-transit-card b{font-size:12px;letter-spacing:.08em;color:#9eb1c9}
+.vehicle-transit-card strong{font-size:19px;white-space:nowrap}
+.vehicle-transit-card small,.vehicle-transit-note{color:#8fa2bb}
+.vehicle-transit-note{margin:12px 2px 0;font-size:12px}
+.gate-summary .gate-vehicle-mini{font-size:10px;opacity:.82;white-space:normal;line-height:1.35}
+.gate-quick-item small{white-space:normal;line-height:1.25}
+@media(max-width:720px){.vehicle-transit-grid{grid-template-columns:1fr}.vehicle-transit-card{padding:13px 14px}.vehicle-transit-card strong{font-size:18px}}
