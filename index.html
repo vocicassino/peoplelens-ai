@@ -9,12 +9,12 @@
   <link rel="icon" href="./icons/icon-192.png" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <link rel="stylesheet" href="./styles.css" />
-  <title>PeopleLens AI V2</title>
+  <title>PeopleLens AI V2.1</title>
 </head>
 <body>
   <header class="app-header">
     <div>
-      <div class="brand">PeopleLens <span>AI</span> <em>V2</em></div>
+      <div class="brand">PeopleLens <span>AI</span> <em>V2.1</em></div>
       <div class="tagline">Conta le persone, non le identità.</div>
     </div>
     <div class="header-actions">
@@ -44,6 +44,26 @@
           <div><small>ENTRATI</small><strong id="hudEntries">0</strong></div>
           <div><small>USCITI</small><strong id="hudExits">0</strong></div>
         </div>
+        <aside id="personInspector" class="person-inspector hidden" aria-live="polite">
+          <div class="person-inspector-head">
+            <div>
+              <span class="person-live-dot"></span><small>TRACCIA LIVE</small>
+              <strong id="personInspectorId">P—</strong>
+            </div>
+            <button id="personInspectorClose" type="button" aria-label="Chiudi scheda persona">✕</button>
+          </div>
+          <div class="person-risk normal" id="personRisk"><span id="personRiskLabel">NORMALE</span><small id="personRiskDetail">Nessuna anomalia associata</small></div>
+          <div class="person-inspector-grid">
+            <div><small>PERMANENZA</small><strong id="personDwell">—</strong></div>
+            <div><small>VELOCITÀ</small><strong id="personSpeed">—</strong></div>
+            <div><small>POSTURA</small><strong id="personPose">—</strong></div>
+            <div><small>CONFIDENZA</small><strong id="personConfidence">—</strong></div>
+            <div><small>ATTRAVERSAMENTO</small><strong id="personCrossing">—</strong></div>
+            <div><small>POSIZIONE</small><strong id="personPosition">—</strong></div>
+          </div>
+          <div id="personFlags" class="person-flags"><span>Nessuna anomalia</span></div>
+          <div id="personTrackStatus" class="person-track-status">Tocca un riquadro persona per seguirla.</div>
+        </aside>
       </div>
 
       <div class="camera-controls">

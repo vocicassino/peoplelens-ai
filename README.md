@@ -1,6 +1,18 @@
-# PeopleLens AI V2
+# PeopleLens AI V2.1
 
 PWA per GitHub Pages che usa la fotocamera del telefono per contare persone e segnalare anomalie direttamente sul dispositivo.
+
+
+## Novità V2.1
+
+- tocca direttamente il riquadro di una persona per selezionarla
+- evidenziazione gialla della traccia selezionata
+- scheda LIVE sovrapposta al video con permanenza, velocità, postura e confidenza AI
+- ultimo attraversamento ingresso/uscita con orario
+- posizione rispetto alla linea e alla zona riservata
+- livello anomalia per la singola traccia: Normale, Attenzione o Critico
+- badge delle anomalie associate alla persona
+- chiusura rapida della scheda e aggiornamento continuo finché la traccia resta disponibile
 
 ## Novità V2
 

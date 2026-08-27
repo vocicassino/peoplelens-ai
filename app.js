@@ -11,7 +11,9 @@ const els = {
   visibleCount: $('#visibleCount'), occupancyCount: $('#occupancyCount'), entriesCount: $('#entriesCount'), exitsCount: $('#exitsCount'), peakCount: $('#peakCount'), peakTime: $('#peakTime'), crowdPercent: $('#crowdPercent'), crowdMeter: $('#crowdMeter'),
   avgDwell: $('#avgDwell'), poseStatus: $('#poseStatus'), hudVisible: $('#hudVisible'), hudOccupancy: $('#hudOccupancy'), hudEntries: $('#hudEntries'), hudExits: $('#hudExits'),
   alertPanel: $('#alertPanel'), alertIcon: $('#alertIcon'), alertTitle: $('#alertTitle'), alertText: $('#alertText'), anomalyCount: $('#anomalyCount'), eventLog: $('#eventLog'), toast: $('#toast'), zoneHelp: $('#zoneHelp'),
-  fullAlert: $('#fullAlert'), fullAlertTitle: $('#fullAlertTitle'), fullAlertText: $('#fullAlertText'), heatmapCanvas: $('#heatmapCanvas')
+  fullAlert: $('#fullAlert'), fullAlertTitle: $('#fullAlertTitle'), fullAlertText: $('#fullAlertText'), heatmapCanvas: $('#heatmapCanvas'),
+  personInspector: $('#personInspector'), personInspectorId: $('#personInspectorId'), personInspectorClose: $('#personInspectorClose'), personRisk: $('#personRisk'), personRiskLabel: $('#personRiskLabel'), personRiskDetail: $('#personRiskDetail'),
+  personDwell: $('#personDwell'), personSpeed: $('#personSpeed'), personPose: $('#personPose'), personConfidence: $('#personConfidence'), personCrossing: $('#personCrossing'), personPosition: $('#personPosition'), personFlags: $('#personFlags'), personTrackStatus: $('#personTrackStatus')
 };
 
 let model=null, poseDetector=null, poseReady=false, poseLoadFailed=false, latestPoses=[];
@@ -21,6 +23,7 @@ let personTracker=new PersonTracker(), objectTracker=new ObjectTracker();
 let settings=loadSettings(); let recentCounts=[]; let lastFrameTs=0; let aiFrames=0; let fpsWindowStart=performance.now();
 let anomalyCooldown=new Map(); let activeStates=new Set(); let drawZoneMode=false, zoneStart=null, tempZone=null; let installPrompt=null; let audioCtx=null;
 let clusterSince=null, dwellTotalMs=0, dwellSamples=0, currentTracks=[];
+let selectedTrackId=null;
 const bagClasses=new Set(['backpack','handbag','suitcase']);
 const heatCols=16, heatRows=9; let heatGrid=new Array(heatCols*heatRows).fill(0);
 
@@ -45,7 +48,7 @@ function updateOutputs(){
 function updateZoneHelp(){ els.zoneHelp.innerHTML=settings.restrictedZone?'Zona riservata impostata. Attiva <b>Zona riservata</b> per generare gli avvisi.':'Zona riservata non impostata. Tocca <b>Disegna zona</b> e trascina un rettangolo sul video.'; }
 
 async function loadModels(){
-  els.modelBadge.textContent='Caricamento AI V2…'; els.modelBadge.className='pill warn';
+  els.modelBadge.textContent='Caricamento AI V2.1…'; els.modelBadge.className='pill warn';
   try{
     await tf.ready(); try{await tf.setBackend('webgl')}catch{}
     model=await cocoSsd.load({base:'lite_mobilenet_v2'});
@@ -54,7 +57,7 @@ async function loadModels(){
 
   try{
     poseDetector=await createPoseDetector(); poseReady=true;
-    els.modelBadge.textContent='AI V2 pronta · '+tf.getBackend(); els.poseStatus.textContent='ON';
+    els.modelBadge.textContent='AI V2.1 pronta · '+tf.getBackend(); els.poseStatus.textContent='ON';
   } catch(err){
     console.warn('MoveNet non disponibile, uso fallback:',err); poseLoadFailed=true; poseReady=false; els.poseStatus.textContent='Fallback';
     els.modelBadge.textContent='AI pronta · pose fallback';
@@ -69,7 +72,7 @@ async function enterImmersive(){
   }catch(err){ console.debug('Fullscreen API non disponibile:',err?.message); }
 }
 async function exitImmersive(){
-  document.body.classList.remove('camera-immersive'); els.exitViewBtn.classList.add('hidden'); els.cameraHud.classList.add('hidden');
+  document.body.classList.remove('camera-immersive'); els.exitViewBtn.classList.add('hidden'); els.cameraHud.classList.add('hidden'); closePersonInspector();
   try{ if(document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen(); }catch{}
   resizeCanvas();
 }
@@ -87,9 +90,9 @@ async function startCamera(){
   }catch(err){ console.error(err); await exitImmersive(); toast(err.name==='NotAllowedError'?'Permesso fotocamera negato.':'Fotocamera non disponibile.'); }
 }
 function stopTracks(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null} }
-async function stopCamera(){ running=false; stopTracks(); els.video.srcObject=null; els.startBtn.disabled=false; els.stopBtn.disabled=true; els.switchBtn.disabled=true; els.zoneBtn.disabled=true; els.emptyCamera.classList.remove('hidden'); els.liveBadge.classList.add('hidden'); els.fpsBadge.classList.add('hidden'); els.poseBadge.classList.add('hidden'); els.fullAlert.classList.add('hidden'); clearOverlay(); await exitImmersive(); }
-async function switchCamera(){ currentFacing=currentFacing==='environment'?'user':'environment'; if(!running)return; try{stopTracks(); stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:currentFacing},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:24,max:30}}});els.video.srcObject=stream;await els.video.play();personTracker.reset();objectTracker.reset();latestPoses=[];resizeCanvas();toast(currentFacing==='environment'?'Fotocamera posteriore':'Fotocamera anteriore');}catch(err){toast('Impossibile cambiare fotocamera.');console.error(err)} }
-function resetSession(){ entries=0; exits=0; peak=0; peakAt=null; occupancy=settings.baseOccupancy; visible=0; recentCounts=[]; personTracker.reset();objectTracker.reset();anomalyCooldown.clear();activeStates.clear();clusterSince=null;dwellTotalMs=0;dwellSamples=0;currentTracks=[];latestPoses=[];heatGrid.fill(0);drawHeatmap();updateStats(); }
+async function stopCamera(){ selectedTrackId=null; closePersonInspector(); running=false; stopTracks(); els.video.srcObject=null; els.startBtn.disabled=false; els.stopBtn.disabled=true; els.switchBtn.disabled=true; els.zoneBtn.disabled=true; els.emptyCamera.classList.remove('hidden'); els.liveBadge.classList.add('hidden'); els.fpsBadge.classList.add('hidden'); els.poseBadge.classList.add('hidden'); els.fullAlert.classList.add('hidden'); clearOverlay(); await exitImmersive(); }
+async function switchCamera(){ currentFacing=currentFacing==='environment'?'user':'environment'; if(!running)return; try{stopTracks(); stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:currentFacing},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:24,max:30}}});els.video.srcObject=stream;await els.video.play();personTracker.reset();objectTracker.reset();latestPoses=[];selectedTrackId=null;closePersonInspector();resizeCanvas();toast(currentFacing==='environment'?'Fotocamera posteriore':'Fotocamera anteriore');}catch(err){toast('Impossibile cambiare fotocamera.');console.error(err)} }
+function resetSession(){ selectedTrackId=null; closePersonInspector(); entries=0; exits=0; peak=0; peakAt=null; occupancy=settings.baseOccupancy; visible=0; recentCounts=[]; personTracker.reset();objectTracker.reset();anomalyCooldown.clear();activeStates.clear();clusterSince=null;dwellTotalMs=0;dwellSamples=0;currentTracks=[];latestPoses=[];heatGrid.fill(0);drawHeatmap();updateStats(); }
 
 function resizeCanvas(){ const v=els.video,c=els.overlay; if(!v.videoWidth)return; if(c.width!==v.videoWidth||c.height!==v.videoHeight){c.width=v.videoWidth;c.height=v.videoHeight;} }
 function clearOverlay(){ const c=els.overlay; c.getContext('2d').clearRect(0,0,c.width,c.height); }
@@ -117,7 +120,7 @@ async function inferFrame(){
   matchPosesToTracks(tracks,latestPoses,els.overlay.width,els.overlay.height);
   currentTracks=tracks;
   visible=tracks.length; processCrossings(tracks,now); occupancy=Math.max(0,settings.baseOccupancy+entries-exits); if(occupancy>peak){peak=occupancy;peakAt=Date.now();}
-  updateHeatmap(tracks); processAnomalies(tracks,objTracks,now); drawGuides(tracks,objTracks); updateStats(); updateFps(now);
+  updateHeatmap(tracks); processAnomalies(tracks,objTracks,now); renderPersonInspector(now); drawGuides(tracks,objTracks); updateStats(); updateFps(now);
 }
 
 function processCrossings(tracks,now){
@@ -127,8 +130,8 @@ function processCrossings(tracks,now){
     if(t.lineSide==null){t.lineSide=side;continue}
     if(side!==t.lineSide && t.ageMs>450 && now-t.lastCrossAt>1800){
       const down=t.lineSide==='above'&&side==='below'; const isEntry=settings.entryDirection==='down'?down:!down;
-      if(isEntry){entries++;record('Ingresso',`P${t.id} ha attraversato la linea ingresso`,'info');} else {exits++;record('Uscita',`P${t.id} ha attraversato la linea uscita`,'info');}
-      t.lastCrossAt=now; t.lineSide=side;
+      if(isEntry){entries++;t.lastCrossType='Ingresso';record('Ingresso',`P${t.id} ha attraversato la linea ingresso`,'info');} else {exits++;t.lastCrossType='Uscita';record('Uscita',`P${t.id} ha attraversato la linea uscita`,'info');}
+      t.lastCrossAt=now; t.lastCrossEpoch=Date.now(); t.crossingCount=(t.crossingCount||0)+1; t.lineSide=side;
     } else t.lineSide=side;
   }
 }
@@ -140,6 +143,7 @@ function updatePoseFallTrack(t,now){
   if(lying){ if(t.poseFallSince==null)t.poseFallSince=now; }
   else t.poseFallSince=null;
   const seconds=t.poseFallSince==null?0:(now-t.poseFallSince)/1000;
+  t.poseFallEvidence=evidence; t.poseFallSeconds=seconds; t.poseLying=lying;
   return {lying,seconds,evidence};
 }
 
@@ -148,14 +152,15 @@ function processAnomalies(tracks,objTracks,now){
   if(occupancy>=settings.maxOccupancy){activeStates.add('crowd');trigger('crowd','Sovraffollamento',`Capienza ${occupancy}/${settings.maxOccupancy}`,'danger',5000)}
 
   for(const t of tracks){
-    if(settings.enableStationary && (now-t.stationarySince)/1000>=settings.stationarySeconds){activeStates.add('stationary');trigger('stationary:'+t.id,'Permanenza insolita',`P${t.id} quasi ferma da ${Math.round((now-t.stationarySince)/1000)} s`,'warning',12000)}
+    t.anomalyFlags=[];
+    if(settings.enableStationary && (now-t.stationarySince)/1000>=settings.stationarySeconds){t.anomalyFlags.push('stationary');activeStates.add('stationary');trigger('stationary:'+t.id,'Permanenza insolita',`P${t.id} quasi ferma da ${Math.round((now-t.stationarySince)/1000)} s`,'warning',12000)}
     if(settings.enableFall){
       const fs=updatePoseFallTrack(t,now);
-      if(fs.seconds>=settings.fallSeconds){activeStates.add('fall');trigger('fall:'+t.id,'Possibile caduta',`P${t.id}: postura compatibile con persona a terra (${Math.round(fs.evidence.confidence*100)}%)`,'danger',9000)}
-      if(fs.seconds>=settings.fallEscalationSeconds && t.speed<0.08){activeStates.add('fall');trigger('fall-escalation:'+t.id,'Persona a terra da verificare subito',`P${t.id}: postura a terra persistente da ${Math.round(fs.seconds)} s`,'danger',12000)}
-    }
-    if(settings.enableSpeed && t.speed>=settings.speedThreshold){activeStates.add('speed');trigger('speed:'+t.id,'Movimento rapido',`P${t.id}: velocità anomala stimata`,'warning',8000)}
-    if(settings.enableZone && settings.restrictedZone && pointInZone(t.cx,t.cy,settings.restrictedZone,fw,fh)){activeStates.add('zone');trigger('zone:'+t.id,'Zona riservata',`P${t.id} dentro la zona configurata`,'danger',8000)}
+      if(fs.seconds>=settings.fallSeconds){t.anomalyFlags.push('fall');activeStates.add('fall');trigger('fall:'+t.id,'Possibile caduta',`P${t.id}: postura compatibile con persona a terra (${Math.round(fs.evidence.confidence*100)}%)`,'danger',9000)}
+      if(fs.seconds>=settings.fallEscalationSeconds && t.speed<0.08){if(!t.anomalyFlags.includes('fall'))t.anomalyFlags.push('fall');t.fallEscalated=true;activeStates.add('fall');trigger('fall-escalation:'+t.id,'Persona a terra da verificare subito',`P${t.id}: postura a terra persistente da ${Math.round(fs.seconds)} s`,'danger',12000)} else t.fallEscalated=false;
+    } else { t.poseFallSince=null; t.poseFallEvidence=null; t.poseFallSeconds=0; t.poseLying=false; t.fallEscalated=false; }
+    if(settings.enableSpeed && t.speed>=settings.speedThreshold){t.anomalyFlags.push('speed');activeStates.add('speed');trigger('speed:'+t.id,'Movimento rapido',`P${t.id}: velocità anomala stimata`,'warning',8000)}
+    if(settings.enableZone && settings.restrictedZone && pointInZone(t.cx,t.cy,settings.restrictedZone,fw,fh)){t.anomalyFlags.push('zone');activeStates.add('zone');trigger('zone:'+t.id,'Zona riservata',`P${t.id} dentro la zona configurata`,'danger',8000)}
   }
 
   const epoch=Date.now(); recentCounts.push({ts:epoch,count:visible}); recentCounts=recentCounts.filter(x=>epoch-x.ts<=settings.surgeWindow*1000);
@@ -167,7 +172,7 @@ function processAnomalies(tracks,objTracks,now){
     else clusterSince=null;
   } else clusterSince=null;
 
-  if(settings.enableAfterHours && tracks.length && isAfterHours(new Date(),settings.openTime,settings.closeTime)){activeStates.add('afterHours');trigger('afterHours','Presenza fuori orario',`${tracks.length} persona/e rilevata/e in orario di chiusura`,'danger',15000)}
+  if(settings.enableAfterHours && tracks.length && isAfterHours(new Date(),settings.openTime,settings.closeTime)){for(const t of tracks){if(!t.anomalyFlags.includes('afterHours'))t.anomalyFlags.push('afterHours')}activeStates.add('afterHours');trigger('afterHours','Presenza fuori orario',`${tracks.length} persona/e rilevata/e in orario di chiusura`,'danger',15000)}
 
   if(settings.enableObject){
     for(const o of objTracks){ const still=(now-o.stationarySince)/1000; const near=nearestPersonDistance(o,tracks,diag); if(still>=settings.objectSeconds&&near>0.18){activeStates.add('object');trigger('object:'+o.id,'Possibile oggetto incustodito',`${o.class} O${o.id} senza persona vicina`,'warning',15000)} }
@@ -191,12 +196,79 @@ function drawGuides(tracks=[],objTracks=[]){
   const y=c.height*settings.lineY; ctx.save(); ctx.strokeStyle='#27b0ff';ctx.lineWidth=Math.max(2,c.width/500);ctx.setLineDash([12,8]);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(c.width,y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(8,18,32,.78)';ctx.fillRect(8,y-28,150,22);ctx.fillStyle='#8edcff';ctx.font=`700 ${Math.max(13,c.width/70)}px system-ui`;ctx.fillText('LINEA IN/OUT',16,y-12);
   const zone=tempZone||settings.restrictedZone; if(zone){const zx=zone.x*c.width,zy=zone.y*c.height,zw=zone.w*c.width,zh=zone.h*c.height;ctx.fillStyle='rgba(255,93,104,.13)';ctx.fillRect(zx,zy,zw,zh);ctx.strokeStyle='#ff5d68';ctx.lineWidth=3;ctx.setLineDash([9,6]);ctx.strokeRect(zx,zy,zw,zh);ctx.setLineDash([]);ctx.fillStyle='#ff9ca3';ctx.fillText('ZONA RISERVATA',zx+8,zy+20);}
   for(const t of tracks){
-    const [x,bY,w,h]=t.bbox; const poseFall=t.poseFallSince!=null && (performance.now()-t.poseFallSince)/1000>=settings.fallSeconds;
-    ctx.strokeStyle=poseFall?'#ff5d68':'#33d17a';ctx.lineWidth=Math.max(2,c.width/500);ctx.strokeRect(x,bY,w,h);ctx.fillStyle='rgba(4,14,24,.78)';ctx.fillRect(x,Math.max(0,bY-24),Math.min(150,w),22);ctx.fillStyle='#fff';ctx.fillText(`P${t.id} ${Math.round(t.score*100)}%`,x+5,Math.max(15,bY-8));
+    const [x,bY,w,h]=t.bbox; const poseFall=t.poseFallSince!=null && (performance.now()-t.poseFallSince)/1000>=settings.fallSeconds; const selected=t.id===selectedTrackId;
+    ctx.strokeStyle=selected?'#ffd166':poseFall?'#ff5d68':'#33d17a';ctx.lineWidth=selected?Math.max(4,c.width/300):Math.max(2,c.width/500);ctx.strokeRect(x,bY,w,h);ctx.fillStyle=selected?'rgba(87,62,10,.88)':'rgba(4,14,24,.78)';const labelW=Math.min(selected?210:150,Math.max(w,110));ctx.fillRect(x,Math.max(0,bY-24),labelW,22);ctx.fillStyle='#fff';ctx.fillText(`P${t.id} ${Math.round(t.score*100)}%${selected?' · SELEZIONATA':''}`,x+5,Math.max(15,bY-8));
     if(t.pose) drawPose(ctx,t.pose,{strokeStyle:poseFall?'#ff7b85':'#5ed0ff',pointStyle:'#ffffff',lineWidth:Math.max(2,c.width/600)});
   }
   for(const o of objTracks){const [x,bY,w,h]=o.bbox;ctx.strokeStyle='#ffb02e';ctx.lineWidth=2;ctx.strokeRect(x,bY,w,h);ctx.fillStyle='#ffcf76';ctx.fillText(`O${o.id} ${o.class}`,x+4,Math.max(15,bY-6));}
   if(drawZoneMode){ctx.fillStyle='rgba(255,176,46,.92)';ctx.fillRect(10,c.height-36,290,26);ctx.fillStyle='#07101d';ctx.fillText('TRASCINA PER DISEGNARE LA ZONA',16,c.height-18)} ctx.restore();
+}
+
+
+function closePersonInspector(){
+  selectedTrackId=null;
+  els.personInspector?.classList.add('hidden');
+}
+
+function sourcePointFromPointer(e){
+  const {r,scale,ox,oy}=getObjectFitTransform();
+  return {x:(e.clientX-r.left-ox)/scale,y:(e.clientY-r.top-oy)/scale};
+}
+
+function selectTrackAtPointer(e){
+  if(drawZoneMode||!running||!currentTracks.length)return;
+  const p=sourcePointFromPointer(e);
+  const candidates=currentTracks.filter(t=>{
+    const [x,y,w,h]=t.bbox; const pad=Math.max(8,Math.min(w,h)*.08);
+    return p.x>=x-pad&&p.x<=x+w+pad&&p.y>=y-pad&&p.y<=y+h+pad;
+  }).sort((a,b)=>(a.bbox[2]*a.bbox[3])-(b.bbox[2]*b.bbox[3]));
+  if(!candidates.length){closePersonInspector();drawGuides(currentTracks);return;}
+  selectedTrackId=candidates[0].id;
+  renderPersonInspector(performance.now(),true);
+  drawGuides(currentTracks);
+  if(navigator.vibrate)navigator.vibrate(25);
+}
+
+function trackRisk(t){
+  const flags=t.anomalyFlags||[];
+  const globalCritical=activeStates.has('crowd');
+  const critical=t.fallEscalated||flags.includes('fall')||flags.includes('zone')||flags.includes('afterHours')||globalCritical;
+  if(critical)return{level:'critical',label:'CRITICO',detail:t.fallEscalated?'Persona a terra da verificare subito':flags.length?flags.map(flagLabel).join(' · '):'Sovraffollamento attivo'};
+  if(flags.length||activeStates.has('cluster'))return{level:'warning',label:'ATTENZIONE',detail:flags.length?flags.map(flagLabel).join(' · '):'Assembramento locale attivo'};
+  return{level:'normal',label:'NORMALE',detail:'Nessuna anomalia associata'};
+}
+
+function flagLabel(k){return{stationary:'Permanenza insolita',fall:'Possibile caduta',speed:'Movimento rapido',zone:'Zona riservata',afterHours:'Fuori orario'}[k]||k}
+
+function renderPersonInspector(now=performance.now(),forceOpen=false){
+  if(selectedTrackId==null){els.personInspector?.classList.add('hidden');return;}
+  const t=personTracker.tracks.get(selectedTrackId)||currentTracks.find(x=>x.id===selectedTrackId);
+  if(!t){closePersonInspector();return;}
+  if(forceOpen||document.body.classList.contains('camera-immersive'))els.personInspector.classList.remove('hidden');
+  const age=Math.max(t.ageMs||0,now-t.firstSeen);
+  const stale=Math.max(0,now-t.lastSeen);
+  const speedPct=Math.max(0,Math.round((t.speed||0)*100));
+  const speedLabel=speedPct<2?'Quasi ferma':speedPct>=Math.round(settings.speedThreshold*100)?`${speedPct}%/s · rapida`:`${speedPct}%/s`;
+  let pose='Pose non agganciata';
+  if(t.pose){const conf=Math.round((t.poseFallEvidence?.confidence||0)*100);pose=t.poseLying?`Possibile a terra ${conf}%`:'Normale';}
+  else if(t.poseFallEvidence) pose=t.poseLying?'Possibile a terra · fallback':'Normale · fallback';
+  const crossing=t.lastCrossType?`${t.lastCrossType} · ${new Date(t.lastCrossEpoch).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`:'Nessun passaggio';
+  const inZone=!!(settings.restrictedZone&&pointInZone(t.cx,t.cy,settings.restrictedZone,els.overlay.width,els.overlay.height));
+  const sideLabel=t.lineSide==null?'Linea da determinare':t.lineSide==='above'?'Sopra linea':'Sotto linea';
+  const position=`${sideLabel}${settings.restrictedZone?' · '+(inZone?'in zona':'fuori zona'):''}`;
+  const risk=trackRisk(t);
+  els.personInspectorId.textContent=`P${t.id}`;
+  els.personDwell.textContent=formatDuration(age);
+  els.personSpeed.textContent=speedLabel;
+  els.personPose.textContent=pose;
+  els.personConfidence.textContent=Math.round((t.score||0)*100)+'%';
+  els.personCrossing.textContent=crossing;
+  els.personPosition.textContent=position;
+  els.personRisk.className='person-risk '+risk.level;
+  els.personRiskLabel.textContent=risk.label;els.personRiskDetail.textContent=risk.detail;
+  const flags=t.anomalyFlags||[];
+  els.personFlags.innerHTML=flags.length?flags.map(k=>`<span class="${k==='fall'||k==='zone'||k==='afterHours'?'danger':'warning'}">${escapeHtml(flagLabel(k))}</span>`).join(''):'<span>Nessuna anomalia</span>';
+  els.personTrackStatus.textContent=stale>650?`Segnale temporaneamente perso da ${(stale/1000).toFixed(1)} s`:`Tracciamento attivo · aggiornato ora`;
 }
 
 function updateStats(){
@@ -242,7 +314,7 @@ function toast(msg){els.toast.textContent=msg;els.toast.classList.add('show');cl
 
 async function exportCsv(){
   const ev=await getEvents(10000);const rows=[['data','ora','tipo','gravita','messaggio','visibili','presenti_stimati','entrati','usciti'],...ev.slice().reverse().map(e=>{const d=new Date(e.ts);return[d.toLocaleDateString('it-IT'),d.toLocaleTimeString('it-IT'),e.type,e.severity,e.message,e.visible,e.occupancy,e.entries,e.exits]})];
-  const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='peoplelens-v2-eventi-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='peoplelens-v2.1-eventi-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
 function getObjectFitTransform(){
@@ -258,7 +330,8 @@ function normalizeZone(a,b){return{x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),w:Mat
 
 els.startBtn.addEventListener('click',startCamera);els.stopBtn.addEventListener('click',stopCamera);els.switchBtn.addEventListener('click',switchCamera);els.exitViewBtn.addEventListener('click',exitImmersive);
 els.zoneBtn.addEventListener('click',()=>{if(!running)return;drawZoneMode=!drawZoneMode;els.zoneBtn.textContent=drawZoneMode?'✕ Annulla zona':'▧ Disegna zona';if(!drawZoneMode){zoneStart=null;tempZone=null}});
-els.overlay.addEventListener('pointerdown',beginZoneDraw);els.overlay.addEventListener('pointermove',moveZoneDraw);els.overlay.addEventListener('pointerup',endZoneDraw);els.overlay.addEventListener('pointercancel',()=>{zoneStart=null;tempZone=null});
+els.overlay.addEventListener('pointerdown',beginZoneDraw);els.overlay.addEventListener('pointermove',moveZoneDraw);els.overlay.addEventListener('pointerup',e=>{if(drawZoneMode)endZoneDraw(e);else selectTrackAtPointer(e)});els.overlay.addEventListener('pointercancel',()=>{zoneStart=null;tempZone=null});
+els.personInspectorClose?.addEventListener('click',()=>{closePersonInspector();drawGuides(currentTracks)});
 for(const id of settingIds){$('#'+id)?.addEventListener('input',readSettings);$('#'+id)?.addEventListener('change',readSettings)}
 $('#resetSettingsBtn').addEventListener('click',()=>{settings={...DEFAULT_SETTINGS};saveSettings();hydrateSettings();toast('Impostazioni ripristinate.');});
 $('#resetHeatmapBtn').addEventListener('click',()=>{heatGrid.fill(0);drawHeatmap();toast('Heatmap azzerata.');});

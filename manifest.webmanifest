@@ -1,6 +1,6 @@
 {
-  "name": "PeopleLens AI V2",
-  "short_name": "PeopleLens V2",
+  "name": "PeopleLens AI V2.1",
+  "short_name": "PeopleLens V2.1",
   "description": "Contapersone, Pose AI e rilevamento anomalie in locale.",
   "start_url": "./",
   "scope": "./",
