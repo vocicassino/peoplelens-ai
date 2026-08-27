@@ -63,6 +63,7 @@ export class PersonTracker {
         stationarySince,
         lastSeen: now,
         ageMs: now - t.firstSeen,
+        trail: [...(t.trail || []), {x:cx,y:cy,ts:now}].filter(p=>now-p.ts<=32000).slice(-180),
       };
       this.tracks.set(id, updated);
       output.push(updated);
@@ -89,6 +90,10 @@ export class PersonTracker {
         lastCrossAt: 0,
         fallSince: null,
         zoneSince: null,
+        trail: [{x:cx,y:cy,ts:now}],
+        zoneDwellSince: null,
+        loopSince: null,
+        wrongWayUntil: 0,
       };
       this.tracks.set(id, t);
       output.push(t);

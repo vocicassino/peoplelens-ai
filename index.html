@@ -9,12 +9,12 @@
   <link rel="icon" href="./icons/icon-192.png" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <link rel="stylesheet" href="./styles.css" />
-  <title>PeopleLens AI V2.1</title>
+  <title>PeopleLens AI V2.5</title>
 </head>
 <body>
   <header class="app-header">
     <div>
-      <div class="brand">PeopleLens <span>AI</span> <em>V2.1</em></div>
+      <div class="brand">PeopleLens <span>AI</span> <em>V2.5</em></div>
       <div class="tagline">Conta le persone, non le identità.</div>
     </div>
     <div class="header-actions">
@@ -38,6 +38,11 @@
         <div id="poseBadge" class="pose-badge hidden">POSE</div>
         <button id="exitViewBtn" class="exit-view hidden" type="button" aria-label="Esci dalla visualizzazione a schermo intero">✕</button>
         <div id="fullAlert" class="full-alert hidden"><b id="fullAlertTitle">Anomalia</b><span id="fullAlertText"></span></div>
+        <div id="gateCalibHint" class="gate-calib-hint hidden"><b>CALIBRA VARCO</b><span id="gateCalibText">Tocca il punto A del passaggio.</span></div>
+        <nav id="gateQuickMap" class="gate-quick-map hidden" aria-label="Controllo rapido varchi">
+          <div class="gate-quick-title"><span>VARCHI</span><strong id="gateQuickActive">V1</strong></div>
+          <div id="gateQuickList" class="gate-quick-list"></div>
+        </nav>
         <div id="cameraHud" class="camera-hud hidden">
           <div><small>VISIBILI</small><strong id="hudVisible">0</strong></div>
           <div><small>PRESENTI</small><strong id="hudOccupancy">0</strong></div>
@@ -50,7 +55,10 @@
               <span class="person-live-dot"></span><small>TRACCIA LIVE</small>
               <strong id="personInspectorId">P—</strong>
             </div>
-            <button id="personInspectorClose" type="button" aria-label="Chiudi scheda persona">✕</button>
+            <div class="person-head-actions">
+              <button id="followBtn" class="follow-btn" type="button" aria-pressed="false">◎ SEGUI</button>
+              <button id="personInspectorClose" type="button" aria-label="Chiudi scheda persona">✕</button>
+            </div>
           </div>
           <div class="person-risk normal" id="personRisk"><span id="personRiskLabel">NORMALE</span><small id="personRiskDetail">Nessuna anomalia associata</small></div>
           <div class="person-inspector-grid">
@@ -60,6 +68,8 @@
             <div><small>CONFIDENZA</small><strong id="personConfidence">—</strong></div>
             <div><small>ATTRAVERSAMENTO</small><strong id="personCrossing">—</strong></div>
             <div><small>POSIZIONE</small><strong id="personPosition">—</strong></div>
+            <div><small>PERCORSO</small><strong id="personPath">—</strong></div>
+            <div><small>FOLLOW</small><strong id="personFollowState">OFF</strong></div>
           </div>
           <div id="personFlags" class="person-flags"><span>Nessuna anomalia</span></div>
           <div id="personTrackStatus" class="person-track-status">Tocca un riquadro persona per seguirla.</div>
@@ -71,6 +81,7 @@
         <button id="stopBtn" class="danger" type="button" disabled>■ Stop</button>
         <button id="switchBtn" class="ghost" type="button" disabled>⇄ Fotocamera</button>
         <button id="zoneBtn" class="ghost" type="button" disabled>▧ Disegna zona</button>
+        <button id="gateBtn" class="ghost" type="button" disabled>⌁ Calibra varco</button>
       </div>
       <p class="privacy-note">🔒 Elaborazione sul dispositivo. Nessun volto riconosciuto, nessuna foto salvata.</p>
     </section>
@@ -105,17 +116,32 @@
           <div class="anomaly-item"><span>🎒</span><div><b>Oggetto incustodito</b><small>Zaino/borsa/valigia senza persona vicina</small></div><i data-state="object">OFF</i></div>
           <div class="anomaly-item"><span>🌑</span><div><b>Camera scura/ostruita</b><small>Qualità immagine insufficiente</small></div><i data-state="dark">OFF</i></div>
           <div class="anomaly-item"><span>🧍‍♂️</span><div><b>Assembramento locale</b><small>Più persone molto vicine per alcuni secondi</small></div><i data-state="cluster">OFF</i></div>
+          <div class="anomaly-item"><span>🔁</span><div><b>Movimento ripetitivo</b><small>Percorso che torna più volte nella stessa area</small></div><i data-state="loop">OFF</i></div>
+          <div class="anomaly-item"><span>⏱️</span><div><b>Sosta prolungata in zona</b><small>Permanenza nella zona disegnata oltre la soglia</small></div><i data-state="zoneDwell">OFF</i></div>
+          <div class="anomaly-item"><span>↯</span><div><b>Direzione vietata</b><small>Attraversamento della linea nel verso non consentito</small></div><i data-state="wrongWay">OFF</i></div>
         </div>
       </article>
 
       <article class="card settings-card">
         <div class="section-head"><div><h2>Impostazioni</h2><p>Regola le soglie sul posto.</p></div><button id="resetSettingsBtn" class="link-btn" type="button">Ripristina</button></div>
+        <div class="gate-manager">
+          <div class="gate-manager-head"><div><small>VARCHI IN/OUT</small><strong id="gateCountLabel">1 varco</strong></div><div class="gate-manager-actions"><button id="addGateBtn" type="button">＋ Varco</button><button id="deleteGateBtn" type="button" class="danger-text">Elimina</button></div></div>
+          <div class="gate-manager-grid">
+            <label>Varco attivo<select id="gateSelector"></select></label>
+            <label>Nome varco<input id="gateName" type="text" maxlength="28" value="Varco 1"></label>
+            <label class="gate-enabled"><input id="gateEnabled" type="checkbox" checked><span></span>Conteggio attivo</label>
+            <div class="gate-line-info"><small>LINEA</small><strong id="lineInfoOut">0° · 84%</strong></div>
+          </div>
+          <div class="gate-action-row"><button id="calibrateGateBtn" type="button">⌁ Calibra con 2 tocchi</button><button id="resetLineBtn" type="button">↺ Orizzontale</button></div>
+          <div id="gateSummary" class="gate-summary"></div>
+        </div>
         <div class="settings-grid">
           <label>Confidenza AI <output id="confidenceOut">55%</output><input id="confidence" type="range" min="35" max="90" step="5" value="55"></label>
           <label>Capienza massima <input id="maxOccupancy" type="number" min="1" max="5000" value="50"></label>
           <label>Presenti iniziali <input id="baseOccupancy" type="number" min="0" max="5000" value="0"></label>
-          <label>Linea ingresso <output id="lineYOut">62%</output><input id="lineY" type="range" min="15" max="85" value="62"></label>
-          <label>Direzione ingresso<select id="entryDirection"><option value="down">Dall'alto verso il basso</option><option value="up">Dal basso verso l'alto</option></select></label>
+          <label>Direzione ingresso del varco<select id="entryDirection"><option value="forward">Lato 1 → Lato 2</option><option value="reverse">Lato 2 → Lato 1</option></select></label>
+          <label>Direzione consentita del varco<select id="allowedDirection"><option value="forward">Lato 1 → Lato 2</option><option value="reverse">Lato 2 → Lato 1</option></select></label>
+          <label>Traccia persona <div class="with-unit"><input id="trailSeconds" type="number" min="5" max="30" value="15"><span>s</span></div></label>
           <label>Persona ferma dopo <div class="with-unit"><input id="stationarySeconds" type="number" min="5" max="600" value="30"><span>s</span></div></label>
           <label>Possibile caduta dopo <div class="with-unit"><input id="fallSeconds" type="number" min="1" max="20" step="0.5" value="2.5"><span>s</span></div></label>
           <label>Escalation persona a terra <div class="with-unit"><input id="fallEscalationSeconds" type="number" min="3" max="60" step="1" value="8"><span>s</span></div></label>
@@ -126,6 +152,9 @@
           <label>Assembramento dopo <div class="with-unit"><input id="clusterSeconds" type="number" min="2" max="120" value="8"><span>s</span></div></label>
           <label>Raggio assembramento <output id="clusterRadiusOut">17%</output><input id="clusterRadius" type="range" min="5" max="40" value="17"></label>
           <label>Oggetto incustodito dopo <div class="with-unit"><input id="objectSeconds" type="number" min="10" max="600" value="45"><span>s</span></div></label>
+          <label>Sosta in zona dopo <div class="with-unit"><input id="zoneDwellSeconds" type="number" min="5" max="600" value="20"><span>s</span></div></label>
+          <label>Analizza percorso <div class="with-unit"><input id="loopWindowSeconds" type="number" min="8" max="30" value="15"><span>s</span></div></label>
+          <label>Soglia percorso ripetitivo <output id="loopPathOut">90%</output><input id="loopPathThreshold" type="range" min="40" max="200" step="5" value="90"></label>
           <label>Apertura <input id="openTime" type="time" value="07:00"></label>
           <label>Chiusura <input id="closeTime" type="time" value="23:00"></label>
         </div>
@@ -139,9 +168,13 @@
           <label class="switch"><input id="enableAfterHours" type="checkbox"><span></span>Fuori orario</label>
           <label class="switch"><input id="enableObject" type="checkbox"><span></span>Oggetto incustodito</label>
           <label class="switch"><input id="enableDark" type="checkbox"><span></span>Camera scura</label>
+          <label class="switch"><input id="enableLoop" type="checkbox"><span></span>Movimento ripetitivo</label>
+          <label class="switch"><input id="enableZoneDwell" type="checkbox"><span></span>Sosta prolungata in zona</label>
+          <label class="switch"><input id="enableWrongWay" type="checkbox"><span></span>Direzione vietata</label>
           <label class="switch"><input id="soundAlerts" type="checkbox" checked><span></span>Suono/vibrazione</label>
         </div>
         <div class="zone-help" id="zoneHelp">Zona riservata non impostata. Tocca <b>Disegna zona</b> e trascina un rettangolo sul video.</div>
+        <div class="line-help">⌁ <b>Calibra varco</b>: tocca i due lati reali della porta o del passaggio e la linea viene posizionata automaticamente. Puoi creare fino a <b>6 varchi indipendenti</b>. Tocca una linea sul video per renderla attiva; sul varco attivo trascina <b>A</b>, <b>B</b> o <b>✥ SPOSTA</b>. Ogni varco ha verso IN e direzione consentita propri. In fullscreen usa la barra <b>V1 · V2 · V3…</b> per selezionare un varco o il pulsante ⏻ per attivarlo/disattivarlo senza uscire dalla telecamera.</div>
       </article>
     </section>
 
