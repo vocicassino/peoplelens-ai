@@ -1,42 +1,53 @@
-# PeopleLens AI V2.8 — Veicoli + Face Detection anonimo
+# PeopleLens AI V3.0
 
-PWA per conteggio persone, tracking anonimo, varchi IN/OUT, Long Range, rilevamento veicoli e anomalie direttamente sul dispositivo.
+PWA per GitHub Pages che analizza video localmente con TensorFlow.js.
 
-## Funzioni incluse
+## Novità V3.0
 
-- Riconosce e distingue **persona, auto, moto e bicicletta** con COCO-SSD.
-- Mostra conteggi LIVE separati e riquadri con etichette diverse sul video.
-- Aggiunge **Face Detection** con BlazeFace: i volti sono rilevati ma **non identificati biometricamente**.
-- Ogni volto riceve un ID temporaneo `F1`, `F2`… e, quando possibile, viene associato alla traccia persona `P1`, `P2`… della stessa inquadratura.
-- Pulsante **🙂 Volti** in fullscreen con scheda LIVE dedicata.
-- Selezionando un volto nella scheda o direttamente sul video, il suo riquadro viene evidenziato.
-- Le miniature volto sono ritagli LIVE del fotogramma corrente e **non vengono salvate**.
-- Mantiene Long Range, Zona AI prioritaria, multi-varco, Pose AI, anomalie, heatmap, tracking e CSV.
-- **V2.8:** conta i transiti IN/OUT di auto, moto e biciclette per ogni varco e mostra riepiloghi di sessione e giornalieri.
+### 1. Più telefoni / nodi
+Ogni telefono continua a fare l'AI sul proprio dispositivo e può inviare alla **Control Room** soltanto:
+- persone visibili, presenti, IN/OUT
+- auto, moto e bici
+- conteggi per varco
+- anomalie attive
+- stato/nome della sorgente
 
-## Privacy
+Non vengono inviati automaticamente video, foto o ritagli dei volti.
 
-La V2.8 non contiene riconoscimento dell'identità, confronto con gallerie di persone, nomi automatici o database biometrici. Il modulo volto serve solo a rilevare e seguire anonimamente un volto nella sessione corrente.
+Per la sincronizzazione è incluso `worker/`, un piccolo Cloudflare Worker con D1. GitHub Pages da solo non può fare da server realtime condiviso.
+
+### 2. Telecamera di sorveglianza
+PeopleLens V3.0 supporta:
+- `Fotocamera telefono`
+- `Schermo / finestra` tramite Screen Capture, quando il browser lo supporta
+- `Telecamera IP · HLS`
+
+Se la telecamera espone soltanto RTSP/ONVIF, usa il bridge incluso in `bridge/` basato su MediaMTX per trasformare RTSP in HLS/WebRTC.
+
+L'app non si inietta automaticamente sopra qualsiasi sito del produttore: i browser impediscono in molti casi di leggere i pixel di video cross-origin. La modalità consigliata è aprire il flusso direttamente in PeopleLens. Su desktop la modalità `Schermo / finestra` permette invece di scegliere manualmente la finestra del visualizzatore e analizzarne la cattura.
 
 ## Installazione GitHub Pages
+Carica il contenuto di questa cartella nella root del repository e abilita Pages da `main / root`.
 
-Carica tutti i file nella root del repository e abilita GitHub Pages da `Settings > Pages > Deploy from a branch > main / root`. Dopo un aggiornamento chiudi completamente la PWA/browser e riaprila per caricare la cache `peoplelens-shell-v2.8.0`.
+## Control Room
+Apri:
+`control-room.html`
 
-## Modelli
+Inserisci:
+- Endpoint Sync
+- Codice sito/stanza
+- Chiave stanza
 
-- TensorFlow.js
-- COCO-SSD: persone / auto / moto / biciclette / oggetti
-- MoveNet MultiPose: postura
-- BlazeFace: rilevamento volto anonimo
+Gli stessi dati devono essere impostati su ogni telefono PeopleLens.
 
-## Nota
+## Worker di sincronizzazione
+Vedi `worker/README.md`.
 
-Il rilevamento può sbagliare con distanza elevata, poca luce, occlusioni, forti prospettive o dispositivi poco potenti. Non è un sistema di sicurezza certificato.
+## Telecamere RTSP
+Vedi `bridge/README.md`.
 
+## Nota HTTPS / CORS
+GitHub Pages viene servito in HTTPS. Un flusso HLS HTTP può essere bloccato dal browser come mixed content. Per l'analisi il video deve inoltre essere leggibile da Canvas/TensorFlow, quindi il server del flusso deve autorizzare CORS per l'origine GitHub Pages.
 
-## V2.8 · Transiti veicoli
-- Auto, moto e biciclette hanno tracking separato dalle persone.
-- Ogni attraversamento di un varco viene contato come IN/OUT per classe.
-- Conteggi di sessione, riepilogo per singolo varco e totale giornaliero derivato dal registro locale.
-- Il CSV include classe veicolo, direzione e snapshot dei totali.
-- I transiti dei veicoli non modificano il conteggio delle persone presenti.
+## Privacy
+Il modulo volto della V3.0 resta di rilevamento/tracking anonimo e non determina l'identità reale delle persone. Le miniature live non vengono archiviate dall'app.

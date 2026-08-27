@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b172a">
+  <title>PeopleLens Control Room V3.0</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./control-room.css">
+</head>
+<body class="control-room-page">
+  <header class="app-header">
+    <div><div class="brand">PeopleLens <span>Control Room</span> <em>V3.0</em></div><div class="tagline">Più telefoni e telecamere, un'unica dashboard.</div></div>
+    <div class="header-actions"><a class="ghost room-home" href="./index.html">← PeopleLens</a></div>
+  </header>
+  <main class="room-layout">
+    <section class="card room-config">
+      <div class="section-head"><div><h2>Connessione sito</h2><p>Usa gli stessi endpoint, codice stanza e chiave impostati sui telefoni.</p></div><span id="roomState" class="pill warn">Non collegata</span></div>
+      <form id="roomForm" class="room-form">
+        <label>Endpoint Sync<input id="roomEndpoint" type="url" inputmode="url" placeholder="https://peoplelens-sync....workers.dev" required></label>
+        <label>Codice sito / stanza<input id="roomCode" type="text" maxlength="40" placeholder="cassino-evento" required></label>
+        <label>Chiave stanza<input id="roomToken" type="password" autocomplete="off" placeholder="chiave privata" required></label>
+        <button class="primary" type="submit">Collega</button>
+      </form>
+      <p class="room-note">La Control Room riceve metadati: conteggi, stato dei nodi, varchi e anomalie. I telefoni non inviano automaticamente video, volti o fotografie. *La somma dei presenti è affidabile solo se i nodi sorvegliano aree distinte; camere sovrapposte possono contare la stessa persona più volte.</p>
+    </section>
+
+    <section class="room-kpis">
+      <article class="card room-kpi"><span>Nodi online</span><strong id="kpiNodes">0</strong><small id="kpiNodesTotal">0 registrati</small></article>
+      <article class="card room-kpi"><span>Persone visibili</span><strong id="kpiVisible">0</strong><small>somma nodi online</small></article>
+      <article class="card room-kpi"><span>Presenti stimati*</span><strong id="kpiOccupancy">0</strong><small>somma nodi online</small></article>
+      <article class="card room-kpi"><span>Anomalie attive</span><strong id="kpiAlerts">0</strong><small>su tutti i nodi online</small></article>
+      <article class="card room-kpi"><span>Auto visibili</span><strong id="kpiCars">0</strong><small>nodi online</small></article>
+      <article class="card room-kpi"><span>Moto + bici</span><strong id="kpiTwoWheels">0</strong><small>nodi online</small></article>
+    </section>
+
+    <section class="card nodes-section">
+      <div class="section-head"><div><h2>Nodi</h2><p>Aggiornamento automatico ogni 2 secondi.</p></div><button id="refreshRoomBtn" class="ghost" type="button">Aggiorna</button></div>
+      <div id="nodesGrid" class="nodes-grid"><div class="empty-log">Configura la connessione per vedere i telefoni e le telecamere.</div></div>
+    </section>
+
+    <section class="card room-security">
+      <h2>Sicurezza</h2>
+      <p>Non esporre direttamente una telecamera RTSP a Internet. Per accesso remoto usa HTTPS con autenticazione e, preferibilmente, VPN/rete privata. La chiave della stanza resta memorizzata soltanto in questo browser.</p>
+    </section>
+  </main>
+  <div id="roomToast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./control-room.js"></script>
+</body>
+</html>

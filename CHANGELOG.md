@@ -1,3 +1,13 @@
+# V3.0
+- Multi-nodo: collegamento di più telefoni alla stessa Control Room.
+- Cloudflare Worker + D1 opzionale per sincronizzare metadati ogni ~1,5 s.
+- Nuova pagina `control-room.html` con stato online/offline, conteggi e anomalie per nodo.
+- Sorgenti video: fotocamera telefono, Screen Capture desktop, HLS.
+- Supporto a telecamere RTSP/ONVIF tramite bridge MediaMTX -> HLS.
+- Verifica HTTPS/mixed-content e test accesso pixel/CORS per i flussi remoti.
+- Nessun invio automatico di video o volti alla Control Room.
+- Cache PWA aggiornata a `peoplelens-shell-v3.0.0`.
+
 # PeopleLens AI V2.8
 
 - Conteggio IN/OUT separato per auto, moto e biciclette.
@@ -60,3 +70,10 @@
 # V2
 
 - Fullscreen, MoveNet Pose AI, heatmap e rilevamento anomalie esteso.
+
+## V3.0 camera preset update
+- Helper ONVIF/RTSP integrato nella dashboard.
+- Preset Arenti P2/P2T/P2F (ONVIF 8000, RTSP 8554, channel 101/102).
+- Generatore URL RTSP senza memorizzare la password ONVIF.
+- Generatore/scaricamento configurazione `mediamtx.yml`.
+- Impostazione automatica della sorgente HLS quando è disponibile un bridge HTTPS.

@@ -9,12 +9,12 @@
   <link rel="icon" href="./icons/icon-192.png" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <link rel="stylesheet" href="./styles.css" />
-  <title>PeopleLens AI V2.8</title>
+  <title>PeopleLens AI V3.0</title>
 </head>
 <body>
   <header class="app-header">
     <div>
-      <div class="brand">PeopleLens <span>AI</span> <em>V2.8</em></div>
+      <div class="brand">PeopleLens <span>AI</span> <em>V3.0</em></div>
       <div class="tagline">Conta le persone, non le identità.</div>
     </div>
     <div class="header-actions">
@@ -37,6 +37,7 @@
         <div id="fpsBadge" class="fps-badge hidden">0 FPS AI</div>
         <div id="poseBadge" class="pose-badge hidden">POSE</div>
         <div id="scanBadge" class="scan-badge hidden">AI FULL</div>
+        <div id="sourceBadge" class="source-badge hidden">📷 TELEFONO</div>
         <div id="objectHud" class="object-hud hidden" aria-live="polite"><span>👤 <b id="hudPeople">0</b></span><span>🚗 <b id="hudCars">0</b></span><span>🏍️ <b id="hudMotorcycles">0</b></span><span>🚲 <b id="hudBicycles">0</b></span><span>🙂 <b id="hudFaces">0</b></span></div>
         <div id="cameraZoom" class="camera-zoom hidden" aria-label="Zoom fotocamera"><button id="zoomOutBtn" type="button" aria-label="Riduci zoom">−</button><strong id="zoomLabel">1×</strong><button id="zoomInBtn" type="button" aria-label="Aumenta zoom">＋</button></div>
         <div id="priorityHint" class="priority-hint hidden"><b>ZONA AI PRIORITARIA</b><span>Trascina un rettangolo sulla zona lontana da analizzare meglio.</span></div>
@@ -97,6 +98,49 @@
       <p class="privacy-note">🔒 Elaborazione sul dispositivo. I volti vengono solo rilevati e tracciati con ID anonimi: nessuna identità biometrica e nessuna foto salvata.</p>
     </section>
 
+    <section class="card source-network-card">
+      <div class="section-head"><div><h2>Sorgente video e rete</h2><p>Usa la fotocamera del telefono, cattura una finestra/schermo oppure analizza una telecamera IP tramite HLS.</p></div><span class="pill">V3.0</span></div>
+      <div class="source-grid">
+        <label>Sorgente video<select id="videoSource"><option value="camera">📷 Fotocamera telefono</option><option value="screen">🖥️ Schermo / finestra (desktop)</option><option value="hls">📡 Telecamera IP · HLS</option></select></label>
+        <label>Nome sorgente<input id="sourceLabel" type="text" maxlength="40" placeholder="Es. Ingresso principale"></label>
+        <label class="source-url-field">URL HLS / bridge<input id="remoteStreamUrl" type="url" inputmode="url" placeholder="https://bridge.example.com/cam1/index.m3u8"></label>
+        <div class="source-status"><small>STATO SORGENTE</small><strong id="sourceStatus">Pronta · fotocamera telefono</strong></div>
+      </div>
+      <div class="source-help" id="sourceHelp">Per telecamere RTSP/ONVIF usa un bridge locale (es. MediaMTX) che esponga HLS/WebRTC al browser. PeopleLens deve poter leggere i pixel del video: il server deve consentire CORS.</div>
+
+      <details class="onvif-helper" id="onvifHelper">
+        <summary>📡 Configura telecamera ONVIF / RTSP</summary>
+        <div class="onvif-note">Preset pronto per la famiglia Arenti P2/P2T/P2F: ONVIF 8000, RTSP 8554, percorso <code>/Streaming/Channels/101</code>. La password è quella che imposti nella voce ONVIF dell'app della telecamera e non viene salvata da PeopleLens.</div>
+        <div class="onvif-grid">
+          <label>Preset<select id="cameraPreset"><option value="arenti">Arenti P2 / P2T / P2F</option><option value="custom">Personalizzato</option></select></label>
+          <label>IP telecamera<input id="lanCameraIp" type="text" inputmode="decimal" value="192.168.1.102" placeholder="192.168.1.102"></label>
+          <label>Utente RTSP<input id="rtspUser" type="text" value="admin" autocomplete="username"></label>
+          <label>Password ONVIF<input id="onvifPassword" type="password" autocomplete="new-password" placeholder="Password impostata in ONVIF"></label>
+          <label>Porta RTSP<input id="rtspPort" type="number" min="1" max="65535" value="8554"></label>
+          <label>Canale<select id="rtspChannel"><option value="101">101 · principale</option><option value="102">102 · secondario</option></select></label>
+          <label class="onvif-wide">URL HTTPS del bridge<input id="bridgeBaseUrl" type="url" inputmode="url" placeholder="https://bridge.example.com"></label>
+        </div>
+        <div class="onvif-actions"><button id="buildRtspBtn" class="ghost" type="button">Genera configurazione</button><button id="downloadBridgeBtn" class="ghost" type="button" disabled>Scarica mediamtx.yml</button><button id="useGeneratedHlsBtn" class="primary" type="button" disabled>Usa HLS in PeopleLens</button></div>
+        <div id="rtspConfigResult" class="rtsp-config-result hidden">
+          <label>RTSP telecamera<input id="rtspPreview" type="text" readonly></label>
+          <label>HLS per PeopleLens<input id="hlsPreview" type="text" readonly></label>
+          <label>Configurazione MediaMTX<textarea id="mediamtxPreview" rows="10" readonly></textarea></label>
+          <p id="bridgeWarning">GitHub Pages usa HTTPS: anche il bridge deve essere raggiungibile in HTTPS con un certificato accettato dal telefono.</p>
+        </div>
+      </details>
+
+      <div class="network-divider"></div>
+      <div class="section-head compact"><div><h3>Multi-telefono · Control Room</h3><p>Ogni telefono analizza localmente e invia soltanto numeri, stato e anomalie al server di sincronizzazione.</p></div><a class="ghost room-link" href="./control-room.html">Apri Control Room</a></div>
+      <div class="sync-grid">
+        <label class="switch sync-switch"><input id="enableSync" type="checkbox"><span></span>Collega questo nodo</label>
+        <label>Nome nodo<input id="syncNodeName" type="text" maxlength="40" placeholder="Telefono ingresso A"></label>
+        <label>Codice sito / stanza<input id="syncRoom" type="text" maxlength="40" placeholder="cassino-evento"></label>
+        <label>Endpoint Sync<input id="syncEndpoint" type="url" inputmode="url" placeholder="https://peoplelens-sync....workers.dev"></label>
+        <label>Chiave stanza<input id="syncToken" type="password" autocomplete="off" placeholder="chiave privata"></label>
+        <div class="sync-status"><span id="syncDot"></span><div><small>CONNESSIONE</small><strong id="syncStatus">Non configurata</strong></div><button id="syncTestBtn" type="button" class="ghost">Test</button></div>
+      </div>
+    </section>
+
     <section class="stats-grid">
       <article class="stat card"><span>Visibili ora</span><strong id="visibleCount">0</strong><small>nell'inquadratura</small></article>
       <article class="stat card"><span>Presenti stimati</span><strong id="occupancyCount">0</strong><small>entrati − usciti + base</small></article>
@@ -113,7 +157,7 @@
     </section>
 
     <section class="card vehicle-transit-section">
-      <div class="section-head"><div><h2>Transiti veicoli</h2><p>Conteggio indipendente IN/OUT attraverso i varchi configurati. I veicoli non modificano il numero di persone presenti.</p></div><span class="pill">V2.8</span></div>
+      <div class="section-head"><div><h2>Transiti veicoli</h2><p>Conteggio indipendente IN/OUT attraverso i varchi configurati. I veicoli non modificano il numero di persone presenti.</p></div><span class="pill">V3.0</span></div>
       <div class="vehicle-transit-grid">
         <article class="vehicle-transit-card"><span class="vehicle-icon">🚗</span><div><b>AUTO</b><strong><span id="carEntries">0</span> IN · <span id="carExits">0</span> OUT</strong><small>Oggi: <span id="carTodayEntries">0</span> IN · <span id="carTodayExits">0</span> OUT</small></div></article>
         <article class="vehicle-transit-card"><span class="vehicle-icon">🏍️</span><div><b>MOTO</b><strong><span id="motorcycleEntries">0</span> IN · <span id="motorcycleExits">0</span> OUT</strong><small>Oggi: <span id="motorcycleTodayEntries">0</span> IN · <span id="motorcycleTodayExits">0</span> OUT</small></div></article>
@@ -223,7 +267,7 @@
 
     <section class="card info-card">
       <h2>Limiti importanti</h2>
-      <p>PeopleLens AI V2.8 è uno strumento di supporto: conteggio e anomalie possono sbagliare per occlusioni, luce, prospettiva o prestazioni del telefono. “Possibile caduta”, “movimento rapido” e “oggetto incustodito” non sostituiscono sistemi di sicurezza certificati né la verifica umana. Il modulo volto effettua solo rilevamento/tracking anonimo e non riconoscimento dell’identità.</p>
+      <p>PeopleLens AI V3.0 è uno strumento di supporto: conteggio e anomalie possono sbagliare per occlusioni, luce, prospettiva o prestazioni del telefono. “Possibile caduta”, “movimento rapido” e “oggetto incustodito” non sostituiscono sistemi di sicurezza certificati né la verifica umana. Il modulo volto effettua solo rilevamento/tracking anonimo e non riconoscimento dell’identità.</p>
     </section>
   </main>
 
@@ -233,6 +277,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.1.0/dist/blazeface.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.10/dist/hls.min.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
