@@ -4,11 +4,13 @@ export class PersonTracker {
     this.maxDistanceRatio = options.maxDistanceRatio ?? 0.13;
     this.nextId = 1;
     this.tracks = new Map();
+    this.endedTracks = [];
   }
 
   reset() {
     this.nextId = 1;
     this.tracks.clear();
+    this.endedTracks = [];
   }
 
   update(detections, frameWidth, frameHeight, now = performance.now()) {
@@ -93,11 +95,13 @@ export class PersonTracker {
     }
 
     for (const [id, t] of this.tracks) {
-      if (now - t.lastSeen > this.maxAgeMs) this.tracks.delete(id);
+      if (now - t.lastSeen > this.maxAgeMs) { this.endedTracks.push({...t, endedAt: now}); this.tracks.delete(id); }
     }
 
     return output;
   }
+
+  drainEnded() { const out=this.endedTracks.slice(); this.endedTracks.length=0; return out; }
 }
 
 export class ObjectTracker {

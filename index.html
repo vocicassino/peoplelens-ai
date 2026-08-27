@@ -9,12 +9,12 @@
   <link rel="icon" href="./icons/icon-192.png" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <link rel="stylesheet" href="./styles.css" />
-  <title>PeopleLens AI</title>
+  <title>PeopleLens AI V2</title>
 </head>
 <body>
   <header class="app-header">
     <div>
-      <div class="brand">PeopleLens <span>AI</span></div>
+      <div class="brand">PeopleLens <span>AI</span> <em>V2</em></div>
       <div class="tagline">Conta le persone, non le identità.</div>
     </div>
     <div class="header-actions">
@@ -35,6 +35,15 @@
         </div>
         <div id="liveBadge" class="live-badge hidden"><i></i> LIVE</div>
         <div id="fpsBadge" class="fps-badge hidden">0 FPS AI</div>
+        <div id="poseBadge" class="pose-badge hidden">POSE</div>
+        <button id="exitViewBtn" class="exit-view hidden" type="button" aria-label="Esci dalla visualizzazione a schermo intero">✕</button>
+        <div id="fullAlert" class="full-alert hidden"><b id="fullAlertTitle">Anomalia</b><span id="fullAlertText"></span></div>
+        <div id="cameraHud" class="camera-hud hidden">
+          <div><small>VISIBILI</small><strong id="hudVisible">0</strong></div>
+          <div><small>PRESENTI</small><strong id="hudOccupancy">0</strong></div>
+          <div><small>ENTRATI</small><strong id="hudEntries">0</strong></div>
+          <div><small>USCITI</small><strong id="hudExits">0</strong></div>
+        </div>
       </div>
 
       <div class="camera-controls">
@@ -53,6 +62,8 @@
       <article class="stat card"><span>Usciti</span><strong id="exitsCount">0</strong><small>sessione corrente</small></article>
       <article class="stat card"><span>Picco</span><strong id="peakCount">0</strong><small id="peakTime">—</small></article>
       <article class="stat card"><span>Affollamento</span><strong id="crowdPercent">0%</strong><div class="meter"><i id="crowdMeter"></i></div></article>
+      <article class="stat card"><span>Permanenza media</span><strong id="avgDwell">—</strong><small>tracce completate</small></article>
+      <article class="stat card"><span>Pose AI</span><strong id="poseStatus">—</strong><small>MoveNet MultiPose</small></article>
     </section>
 
     <section id="alertPanel" class="alert-panel card ok">
@@ -73,6 +84,7 @@
           <div class="anomaly-item"><span>🌙</span><div><b>Presenza fuori orario</b><small>Persona rilevata nell'intervallo chiuso</small></div><i data-state="afterHours">OFF</i></div>
           <div class="anomaly-item"><span>🎒</span><div><b>Oggetto incustodito</b><small>Zaino/borsa/valigia senza persona vicina</small></div><i data-state="object">OFF</i></div>
           <div class="anomaly-item"><span>🌑</span><div><b>Camera scura/ostruita</b><small>Qualità immagine insufficiente</small></div><i data-state="dark">OFF</i></div>
+          <div class="anomaly-item"><span>🧍‍♂️</span><div><b>Assembramento locale</b><small>Più persone molto vicine per alcuni secondi</small></div><i data-state="cluster">OFF</i></div>
         </div>
       </article>
 
@@ -85,10 +97,14 @@
           <label>Linea ingresso <output id="lineYOut">62%</output><input id="lineY" type="range" min="15" max="85" value="62"></label>
           <label>Direzione ingresso<select id="entryDirection"><option value="down">Dall'alto verso il basso</option><option value="up">Dal basso verso l'alto</option></select></label>
           <label>Persona ferma dopo <div class="with-unit"><input id="stationarySeconds" type="number" min="5" max="600" value="30"><span>s</span></div></label>
-          <label>Possibile caduta dopo <div class="with-unit"><input id="fallSeconds" type="number" min="1" max="20" step="1" value="3"><span>s</span></div></label>
+          <label>Possibile caduta dopo <div class="with-unit"><input id="fallSeconds" type="number" min="1" max="20" step="0.5" value="2.5"><span>s</span></div></label>
+          <label>Escalation persona a terra <div class="with-unit"><input id="fallEscalationSeconds" type="number" min="3" max="60" step="1" value="8"><span>s</span></div></label>
           <label>Soglia movimento rapido <output id="speedOut">38%</output><input id="speedThreshold" type="range" min="10" max="100" value="38"></label>
           <label>Aumento improvviso <div class="with-unit"><input id="surgeCount" type="number" min="2" max="100" value="5"><span>pers.</span></div></label>
           <label>Finestra aumento <div class="with-unit"><input id="surgeWindow" type="number" min="2" max="60" value="8"><span>s</span></div></label>
+          <label>Assembramento da <div class="with-unit"><input id="clusterCount" type="number" min="2" max="30" value="4"><span>pers.</span></div></label>
+          <label>Assembramento dopo <div class="with-unit"><input id="clusterSeconds" type="number" min="2" max="120" value="8"><span>s</span></div></label>
+          <label>Raggio assembramento <output id="clusterRadiusOut">17%</output><input id="clusterRadius" type="range" min="5" max="40" value="17"></label>
           <label>Oggetto incustodito dopo <div class="with-unit"><input id="objectSeconds" type="number" min="10" max="600" value="45"><span>s</span></div></label>
           <label>Apertura <input id="openTime" type="time" value="07:00"></label>
           <label>Chiusura <input id="closeTime" type="time" value="23:00"></label>
@@ -99,6 +115,7 @@
           <label class="switch"><input id="enableSpeed" type="checkbox"><span></span>Movimento rapido</label>
           <label class="switch"><input id="enableZone" type="checkbox"><span></span>Zona riservata</label>
           <label class="switch"><input id="enableSurge" type="checkbox" checked><span></span>Aumento improvviso</label>
+          <label class="switch"><input id="enableCluster" type="checkbox"><span></span>Assembramento</label>
           <label class="switch"><input id="enableAfterHours" type="checkbox"><span></span>Fuori orario</label>
           <label class="switch"><input id="enableObject" type="checkbox"><span></span>Oggetto incustodito</label>
           <label class="switch"><input id="enableDark" type="checkbox"><span></span>Camera scura</label>
@@ -106,6 +123,11 @@
         </div>
         <div class="zone-help" id="zoneHelp">Zona riservata non impostata. Tocca <b>Disegna zona</b> e trascina un rettangolo sul video.</div>
       </article>
+    </section>
+
+    <section class="card heatmap-card">
+      <div class="section-head"><div><h2>Heatmap presenze</h2><p>Zone più attraversate durante la sessione, calcolate solo localmente.</p></div><button id="resetHeatmapBtn" class="ghost" type="button">Azzera heatmap</button></div>
+      <canvas id="heatmapCanvas" width="640" height="360" aria-label="Mappa di densità delle presenze"></canvas>
     </section>
 
     <section class="card">
@@ -123,6 +145,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

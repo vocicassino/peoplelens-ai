@@ -1,7 +1,7 @@
 {
-  "name": "PeopleLens AI",
-  "short_name": "PeopleLens",
-  "description": "Contapersone e rilevamento anomalie direttamente sul dispositivo.",
+  "name": "PeopleLens AI V2",
+  "short_name": "PeopleLens V2",
+  "description": "Contapersone, Pose AI e rilevamento anomalie in locale.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -9,7 +9,17 @@
   "theme_color": "#0b172a",
   "orientation": "any",
   "icons": [
-    {"src":"./icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-    {"src":"./icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

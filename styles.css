@@ -20,3 +20,38 @@ button,input,select{font:inherit}button{cursor:pointer}.hidden{display:none!impo
 .log-head{padding:16px 16px 0}.log-actions{display:flex;gap:8px}.event-log{padding:0 16px 16px;max-height:370px;overflow:auto}.empty-log{padding:22px;text-align:center;color:var(--muted);font-size:.78rem;border-top:1px solid rgba(255,255,255,.05)}.event-row{display:grid;grid-template-columns:76px 82px 1fr auto;gap:10px;align-items:center;padding:10px 3px;border-top:1px solid rgba(255,255,255,.05);font-size:.73rem}.event-row time{color:var(--muted)}.event-row .type{font-weight:850}.event-row .sev{border:1px solid currentColor;border-radius:999px;padding:3px 7px;font-size:.58rem;font-weight:900}.sev.info{color:var(--accent2)}.sev.warning{color:var(--warn)}.sev.danger{color:var(--danger)}.info-card{padding:15px}.info-card h2{font-size:.92rem;margin:0 0 5px}.info-card p{font-size:.73rem;color:var(--muted);line-height:1.45;margin:0}.toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#13253c;color:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:.76rem;z-index:100;transition:.2s}.toast.show{opacity:1;transform:translate(-50%,0)}
 @media(max-width:900px){.stats-grid{grid-template-columns:repeat(3,1fr)}.two-col{grid-template-columns:1fr}.anomaly-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.app-header{padding:11px 12px}.tagline{display:none}.layout{padding:12px 10px 32px;gap:11px}.camera-card{padding:9px}.camera-wrap{aspect-ratio:4/3;min-height:230px}.camera-controls button{flex:1 1 calc(50% - 6px);padding:11px 7px}.stats-grid{grid-template-columns:repeat(2,1fr);gap:7px}.stat{padding:11px}.stat strong{font-size:1.48rem}.anomaly-grid{grid-template-columns:1fr}.settings-grid{grid-template-columns:1fr 1fr}.event-row{grid-template-columns:58px 1fr auto}.event-row .type{display:none}.log-head{display:block}.log-actions{margin-top:10px}.log-actions button{flex:1}.header-actions .pill{max-width:118px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+
+/* ===== PeopleLens AI V2 ===== */
+.brand em{font-style:normal;font-size:.62rem;vertical-align:top;margin-left:4px;padding:3px 6px;border-radius:999px;background:#182c46;color:var(--accent2);letter-spacing:.04em}
+.pose-badge{position:absolute;z-index:7;top:52px;right:12px;padding:6px 9px;border-radius:999px;font-size:.66rem;font-weight:900;background:rgba(4,12,22,.76);border:1px solid rgba(94,208,255,.35);color:var(--accent2);backdrop-filter:blur(8px)}
+.exit-view{position:absolute;z-index:12;right:12px;bottom:12px;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(4,12,22,.72);color:#fff;font-weight:900;font-size:1rem;backdrop-filter:blur(8px)}
+.camera-hud{position:absolute;z-index:8;left:12px;right:66px;bottom:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;pointer-events:none}
+.camera-hud>div{background:rgba(3,10,18,.66);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:7px 8px;backdrop-filter:blur(8px);min-width:0}.camera-hud small{display:block;color:#a7b8cb;font-size:.55rem;font-weight:800;letter-spacing:.06em}.camera-hud strong{display:block;font-size:1.15rem;line-height:1.05;margin-top:2px}
+.full-alert{position:absolute;z-index:11;left:50%;top:12px;transform:translateX(-50%);max-width:min(80%,560px);padding:8px 12px;border-radius:12px;background:rgba(124,24,34,.9);border:1px solid rgba(255,130,140,.55);backdrop-filter:blur(10px);text-align:center;pointer-events:none}.full-alert b{display:block;font-size:.78rem}.full-alert span{display:block;font-size:.66rem;color:#ffe7e9;margin-top:2px}
+.heatmap-card{padding:16px}.heatmap-card .section-head{align-items:center}.heatmap-card button{border:1px solid var(--line);padding:9px 12px;border-radius:11px;color:var(--text);background:#122036;font-weight:750}.heatmap-card canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;border-radius:14px;background:#07111f;border:1px solid rgba(255,255,255,.07)}
+.stats-grid{grid-template-columns:repeat(4,1fr)}
+
+body.camera-immersive{overflow:hidden;background:#000}
+body.camera-immersive .app-header{display:none}
+body.camera-immersive .layout{display:block;max-width:none;padding:0;margin:0}
+body.camera-immersive .layout>section:not(.camera-card){display:none}
+body.camera-immersive .camera-card{position:fixed;inset:0;z-index:9999;padding:0;border:0;border-radius:0;background:#000;box-shadow:none}
+body.camera-immersive .camera-wrap{position:absolute;inset:0;width:100%;height:100%;min-height:0;aspect-ratio:auto;border-radius:0;background:#000}
+body.camera-immersive .camera-wrap video,
+body.camera-immersive .camera-wrap canvas{width:100%;height:100%;object-fit:cover}
+body.camera-immersive .camera-controls{position:absolute;z-index:10;left:10px;right:10px;bottom:max(74px,calc(env(safe-area-inset-bottom) + 64px));display:flex;gap:7px;margin:0;justify-content:center;pointer-events:none}
+body.camera-immersive .camera-controls button{pointer-events:auto;flex:0 1 auto;min-width:0;padding:9px 12px;border-radius:999px;background:rgba(6,17,31,.72)!important;border-color:rgba(255,255,255,.18)!important;backdrop-filter:blur(9px);font-size:.72rem}
+body.camera-immersive #startBtn{display:none}
+body.camera-immersive #stopBtn{background:rgba(107,26,37,.78)!important}
+body.camera-immersive .privacy-note{display:none}
+body.camera-immersive .live-badge{top:max(12px,env(safe-area-inset-top));left:12px}
+body.camera-immersive .fps-badge{top:max(12px,env(safe-area-inset-top));right:56px}
+body.camera-immersive .pose-badge{top:max(50px,calc(env(safe-area-inset-top) + 38px));right:12px}
+body.camera-immersive .exit-view{display:block!important;bottom:max(12px,env(safe-area-inset-bottom));right:12px}
+body.camera-immersive .camera-hud{display:grid!important;bottom:max(12px,env(safe-area-inset-bottom));left:12px;right:66px}
+body.camera-immersive .full-alert{top:max(54px,calc(env(safe-area-inset-top) + 42px))}
+body.camera-immersive .toast{z-index:10050}
+
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:680px){.stats-grid{grid-template-columns:repeat(2,1fr)}.camera-hud{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}.camera-hud>div{padding:6px}.camera-hud small{font-size:.48rem}.camera-hud strong{font-size:1rem}body.camera-immersive .camera-controls{bottom:max(68px,calc(env(safe-area-inset-bottom) + 58px))}}
+@media(max-width:390px){body.camera-immersive .camera-controls button{font-size:.66rem;padding:8px 10px}.full-alert{max-width:76%}}

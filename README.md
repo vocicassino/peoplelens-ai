@@ -1,53 +1,52 @@
-# PeopleLens AI
+# PeopleLens AI V2
 
-PWA per contare persone e segnalare anomalie usando la fotocamera del telefono e TensorFlow.js/COCO-SSD direttamente nel browser.
+PWA per GitHub Pages che usa la fotocamera del telefono per contare persone e segnalare anomalie direttamente sul dispositivo.
 
-## Funzioni
+## Novità V2
 
-- conteggio persone visibili in tempo reale
+- avvio immediato in visualizzazione fotocamera a schermo intero
+- video `cover` a pieno schermo con HUD sovrapposto
+- pulsante `✕` per tornare alla dashboard mantenendo la fotocamera attiva
+- COCO-SSD per rilevamento persone e oggetti
+- MoveNet MultiPose per scheletro corporeo e supporto al rilevamento di possibile caduta/persona a terra
+- escalation se la postura a terra persiste
+- fallback automatico al metodo geometrico se MoveNet non è disponibile
+- heatmap locale delle zone più frequentate
+- permanenza media delle tracce completate
+- rilevamento di assembramento locale configurabile
+
+## Funzioni già presenti
+
+- conteggio persone visibili
 - tracking anonimo con ID temporanei
-- ingressi e uscite tramite linea virtuale
-- stima presenti, picco e percentuale di affollamento
+- ingressi/uscite tramite linea virtuale
+- presenti stimati, picco e affollamento
 - zona riservata disegnabile sul video
-- anomalie: sovraffollamento, permanenza insolita, possibile caduta, movimento rapido, aumento improvviso, presenza fuori orario, oggetto incustodito, camera scura/ostruita
-- storico eventi locale in IndexedDB
+- permanenza insolita
+- movimento rapido
+- aumento improvviso
+- presenza fuori orario
+- possibile oggetto incustodito
+- camera scura/ostruita
+- registro eventi locale IndexedDB
 - esportazione CSV
 - PWA installabile
-- nessun riconoscimento facciale e nessuna immagine salvata
+- nessun riconoscimento facciale e nessuna fotografia salvata
 
-## Pubblicazione su GitHub Pages
+## Pubblicazione GitHub Pages
 
-1. Crea un repository, ad esempio `peoplelens-ai`.
-2. Carica tutti i file mantenendo la cartella `icons`.
-3. Apri **Settings → Pages**.
-4. In **Build and deployment**, scegli **Deploy from a branch**.
-5. Seleziona `main` e `/ (root)`, poi **Save**.
-6. Apri l'URL HTTPS generato da GitHub Pages sul telefono.
-7. Concedi il permesso alla fotocamera e premi **Avvia**.
+Sostituisci i file della V1 con quelli della V2 mantenendo la cartella `icons`. In **Settings → Pages** usa `Deploy from a branch`, branch `main`, cartella `/ (root)`.
 
-> La fotocamera web richiede HTTPS (GitHub Pages lo fornisce).
+Dopo l'aggiornamento, se il telefono mostra ancora la V1, chiudi completamente la PWA/browser e riaprila: il Service Worker V2 usa una nuova cache.
 
-## Calibrazione consigliata
+## Uso a schermo intero
 
-- Posiziona il telefono fermo, preferibilmente in alto e con vista obliqua sull'ingresso.
-- Evita controluce e sovrapposizioni eccessive tra persone.
-- Regola `Linea ingresso` dove le persone passano una alla volta o in gruppi piccoli.
-- Calibra la soglia di confidenza (55% è un buon punto di partenza).
-- Considera “possibile caduta”, “movimento rapido” e “oggetto incustodito” come segnalazioni da verificare, non eventi certi.
+Premendo **Avvia**, PeopleLens entra subito in modalità immersiva e prova anche a usare la Fullscreen API del browser. Se il browser non concede il fullscreen nativo, la UI usa comunque una modalità immersiva CSS che occupa l'intera area disponibile. I controlli Stop, Fotocamera e Disegna zona restano sovrapposti al video.
 
 ## Privacy
 
-PeopleLens AI non identifica persone, non usa riconoscimento facciale e non salva fotografie. Gli ID `P1`, `P2`, ecc. sono temporanei e servono solo al tracking mentre una persona resta nell'inquadratura.
+L'elaborazione è locale. Gli ID `P1`, `P2`, ecc. sono temporanei. L'app non effettua riconoscimento facciale e non salva immagini.
 
-## Tecnologia
+## Nota sicurezza
 
-- HTML/CSS/JavaScript puro
-- TensorFlow.js 4.22.0
-- COCO-SSD 2.2.2 (`lite_mobilenet_v2`)
-- getUserMedia
-- IndexedDB
-- Service Worker / Web App Manifest
-
-## Limiti
-
-Non è un sistema di videosorveglianza certificato. Il conteggio e le anomalie possono essere influenzati da luce, prospettiva, occlusioni, prestazioni del telefono e qualità della fotocamera. La possibile caduta è attualmente una euristica basata sulla forma del bounding box e sulla sua persistenza.
+Le anomalie sono indicatori da verificare. Il rilevamento di possibile caduta/persona a terra non sostituisce sistemi di sicurezza certificati o la verifica umana.

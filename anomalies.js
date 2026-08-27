@@ -5,10 +5,14 @@ export const DEFAULT_SETTINGS = {
   lineY: 0.62,
   entryDirection: 'down',
   stationarySeconds: 30,
-  fallSeconds: 3,
+  fallSeconds: 2.5,
+  fallEscalationSeconds: 8,
   speedThreshold: 0.38,
   surgeCount: 5,
   surgeWindow: 8,
+  clusterCount: 4,
+  clusterSeconds: 8,
+  clusterRadius: 0.17,
   objectSeconds: 45,
   openTime: '07:00',
   closeTime: '23:00',
@@ -17,6 +21,7 @@ export const DEFAULT_SETTINGS = {
   enableSpeed: false,
   enableZone: false,
   enableSurge: true,
+  enableCluster: false,
   enableAfterHours: false,
   enableObject: false,
   enableDark: false,
@@ -54,4 +59,15 @@ export function fallHeuristic(track, now, thresholdSeconds) {
 export function nearestPersonDistance(object, people, frameDiag) {
   if (!people.length) return Infinity;
   return Math.min(...people.map(p => Math.hypot(p.cx - object.cx, p.cy - object.cy) / frameDiag));
+}
+
+export function clusterSize(people, frameDiag, radiusRatio) {
+  if (!people.length) return 0;
+  let best = 1;
+  for (const p of people) {
+    let n = 0;
+    for (const q of people) if (Math.hypot(p.cx-q.cx,p.cy-q.cy)/frameDiag <= radiusRatio) n++;
+    best = Math.max(best,n);
+  }
+  return best;
 }
