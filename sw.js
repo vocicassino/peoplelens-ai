@@ -1,4 +1,4 @@
-const CACHE='peoplelens-shell-v3.0.0';
+const CACHE='peoplelens-shell-v3.0.1';
 const SHELL=['./','./index.html','./control-room.html','./control-room.css','./control-room.js','./styles.css','./app.js','./sync.js','./tracker.js','./anomalies.js','./pose.js','./db.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});

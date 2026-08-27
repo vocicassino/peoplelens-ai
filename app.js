@@ -385,7 +385,7 @@ function buildSyncPayload(){
   const motos=currentVehicleTracks.filter(v=>v.class==='motorcycle').length;
   const bikes=currentVehicleTracks.filter(v=>v.class==='bicycle').length;
   return{
-    appVersion:'3.0',
+    appVersion:'3.0.1',
     running,
     source:{type:currentSourceType,label:sourceConfig.label||sourceMeta(currentSourceType).label},
     stats:{visible,occupancy,entries,exits,peak,cars,motorcycles:motos,bicycles:bikes,faces:currentFaceTracks.length},
@@ -397,7 +397,7 @@ function buildSyncPayload(){
 function configureSyncClient(){syncClient.configure(syncConfig,buildSyncPayload);}
 
 async function loadModels(){
-  els.modelBadge.textContent='Caricamento AI V3.0…'; els.modelBadge.className='pill warn';
+  els.modelBadge.textContent='Caricamento AI V3.0.1…'; els.modelBadge.className='pill warn';
   try{
     await tf.ready(); try{await tf.setBackend('webgl')}catch{}
     model=await cocoSsd.load({base:'lite_mobilenet_v2'});
@@ -418,7 +418,7 @@ async function loadModels(){
     console.warn('Face detection non disponibile:',err); faceLoadFailed=true; faceReady=false;
     if(els.faceModelStatus){els.faceModelStatus.textContent='Face AI non disponibile';els.faceModelStatus.className='pill warn';}
   }
-  els.modelBadge.textContent=`AI V3.0 pronta · ${tf.getBackend()}${faceReady?' · FACE':''}`; els.modelBadge.className='pill ok';
+  els.modelBadge.textContent=`AI V3.0.1 pronta · ${tf.getBackend()}${faceReady?' · FACE':''}`; els.modelBadge.className='pill ok';
 }
 
 async function enterImmersive(){
@@ -453,7 +453,6 @@ async function startCamera(){
     toast(msg);
   }
 }
-function stopTracks(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null} }
 async function stopCamera(){ cancelGateCalibration(); cancelPriorityDraw(); selectedTrackId=null; followTrackId=null; closePersonInspector(); running=false; clearVideoElement(); els.startBtn.disabled=false; els.stopBtn.disabled=true; els.switchBtn.disabled=true; els.zoneBtn.disabled=true; if(els.gateBtn)els.gateBtn.disabled=true; if(els.priorityBtn)els.priorityBtn.disabled=true; if(els.aiModeBtn)els.aiModeBtn.disabled=true; if(els.facesBtn)els.facesBtn.disabled=true; els.emptyCamera.classList.remove('hidden'); els.liveBadge.classList.add('hidden'); els.fpsBadge.classList.add('hidden'); els.poseBadge.classList.add('hidden'); els.scanBadge?.classList.add('hidden'); els.sourceBadge?.classList.add('hidden'); els.cameraZoom?.classList.add('hidden'); els.fullAlert.classList.add('hidden'); els.gateQuickMap?.classList.add('hidden'); els.objectHud?.classList.add('hidden'); closeFaceShelf(); clearOverlay(); setSourceRuntimeStatus(`Pronta · ${sourceConfig.label||sourceMeta().label}`); syncClient.push(false); await exitImmersive(); }
 async function switchCamera(){ if(currentSourceType!=='camera'){toast('Cambio fotocamera disponibile solo con la sorgente telefono.');return;} currentFacing=currentFacing==='environment'?'user':'environment'; if(!running)return; try{stopTracks(); stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:currentFacing},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:24,max:30}}});els.video.srcObject=stream;await els.video.play();personTracker.reset();objectTracker.reset();vehicleTracker.reset();faceTracker.reset();currentVehicleTracks=[];currentFaceTracks=[];latestPoses=[];selectedTrackId=null;followTrackId=null;selectedFaceId=null;closePersonInspector();closeFaceShelf();resizeCanvas();ensureEditableLineVisible(true);await configureCameraZoom();resetLineSides();toast(currentFacing==='environment'?'Fotocamera posteriore':'Fotocamera anteriore');}catch(err){toast('Impossibile cambiare fotocamera.');console.error(err)} }
 function resetSession(){ selectedTrackId=null; followTrackId=null; selectedFaceId=null; closePersonInspector(); closeFaceShelf(); gateSessionStats=new Map(settings.gates.map(g=>[g.id,{entries:0,exits:0}])); gateVehicleStats=new Map(settings.gates.map(g=>[g.id,emptyVehicleStats()])); vehicleTotals=emptyVehicleStats(); entries=0; exits=0; peak=0; peakAt=null; occupancy=settings.baseOccupancy; visible=0; recentCounts=[]; personTracker.reset();objectTracker.reset();vehicleTracker.reset();faceTracker.reset();currentVehicleTracks=[];currentFaceTracks=[];anomalyCooldown.clear();activeStates.clear();clusterSince=null;dwellTotalMs=0;dwellSamples=0;currentTracks=[];latestPoses=[];heatGrid.fill(0);drawHeatmap();updateStats();renderGateQuickMap(); }
@@ -924,7 +923,7 @@ function toast(msg){els.toast.textContent=msg;els.toast.classList.add('show');cl
 
 async function exportCsv(){
   const ev=await getEvents(10000);const rows=[['data','ora','tipo','gravita','varco','classe_veicolo','direzione_veicolo','messaggio','visibili_persone','presenti_stimati','persone_entrate','persone_uscite','auto_in','auto_out','moto_in','moto_out','bici_in','bici_out'],...ev.slice().reverse().map(e=>{const d=new Date(e.ts);return[d.toLocaleDateString('it-IT'),d.toLocaleTimeString('it-IT'),e.type,e.severity,e.gateName||'',e.vehicleClass||'',e.vehicleDirection||'',e.message,e.visible,e.occupancy,e.entries,e.exits,e.carIn??'',e.carOut??'',e.motorcycleIn??'',e.motorcycleOut??'',e.bicycleIn??'',e.bicycleOut??'']})];
-  const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='peoplelens-v3.0-eventi-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='peoplelens-v3.0.1-eventi-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
 function getObjectFitTransform(){

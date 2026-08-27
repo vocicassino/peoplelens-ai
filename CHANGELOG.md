@@ -1,3 +1,9 @@
+# V3.0.1
+
+- Corretto errore bloccante ES module: doppia dichiarazione `stopTracks()` in `app.js`.
+- Cache PWA aggiornata a `peoplelens-shell-v3.0.1` per forzare il caricamento dei file corretti.
+- Nessuna funzione V3 rimossa.
+
 # V3.0
 - Multi-nodo: collegamento di più telefoni alla stessa Control Room.
 - Cloudflare Worker + D1 opzionale per sincronizzare metadati ogni ~1,5 s.
