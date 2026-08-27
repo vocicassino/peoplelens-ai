@@ -1,0 +1,25 @@
+# Esempio bridge RTSP -> HLS per PeopleLens AI V3.0
+# Sostituisci utente, password, IP e path della tua telecamera.
+# NON pubblicare direttamente RTSP su Internet.
+
+hls: true
+hlsAddress: :8888
+hlsVariant: lowLatency
+hlsAllowOrigins:
+  - "https://TUO-UTENTE.github.io"
+
+# Se accedi alla PWA da HTTPS, il flusso deve essere HTTPS.
+# Puoi abilitare HTTPS direttamente qui con certificato valido,
+# oppure mettere MediaMTX dietro un reverse proxy HTTPS.
+hlsEncryption: false
+# hlsServerKey: server.key
+# hlsServerCert: server.crt
+
+webrtc: true
+webrtcAddress: :8889
+webrtcAllowOrigins:
+  - "https://TUO-UTENTE.github.io"
+
+paths:
+  cam1:
+    source: rtsp://UTENTE:PASSWORD@192.168.1.50:554/PATH_RTSP

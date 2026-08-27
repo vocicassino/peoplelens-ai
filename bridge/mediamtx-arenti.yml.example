@@ -1,1 +1,21 @@
+# PeopleLens AI V3.0 — esempio Arenti P2/P2T/P2F
+# 1) Nell'app Arenti: Impostazioni > Funzioni avanzate > ONVIF > abilita.
+# 2) Imposta una password ONVIF.
+# 3) Sostituisci PASSWORD_ONVIF qui sotto.
+# 4) Se l'IP cambia, sostituisci 192.168.1.102.
+# 5) NON esporre direttamente RTSP su Internet.
 
+hls: true
+hlsAddress: :8888
+hlsVariant: lowLatency
+hlsAllowOrigins:
+  - "https://TUO-UTENTE.github.io"
+
+webrtc: true
+webrtcAddress: :8889
+webrtcAllowOrigins:
+  - "https://TUO-UTENTE.github.io"
+
+paths:
+  cam1:
+    source: rtsp://admin:PASSWORD_ONVIF@192.168.1.102:8554/Streaming/Channels/101
