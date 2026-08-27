@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b172a" />
+  <meta name="description" content="PeopleLens AI - contapersone e rilevamento anomalie direttamente sul dispositivo." />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>PeopleLens AI</title>
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <div class="brand">PeopleLens <span>AI</span></div>
+      <div class="tagline">Conta le persone, non le identità.</div>
+    </div>
+    <div class="header-actions">
+      <span id="modelBadge" class="pill warn">AI non caricata</span>
+      <button id="installBtn" class="ghost hidden" type="button">Installa</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="camera-card card">
+      <div class="camera-wrap" id="cameraWrap">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div id="emptyCamera" class="camera-placeholder">
+          <div class="camera-icon">◉</div>
+          <strong>Fotocamera pronta</strong>
+          <span>Avvia per iniziare l'analisi locale.</span>
+        </div>
+        <div id="liveBadge" class="live-badge hidden"><i></i> LIVE</div>
+        <div id="fpsBadge" class="fps-badge hidden">0 FPS AI</div>
+      </div>
+
+      <div class="camera-controls">
+        <button id="startBtn" class="primary" type="button">▶ Avvia</button>
+        <button id="stopBtn" class="danger" type="button" disabled>■ Stop</button>
+        <button id="switchBtn" class="ghost" type="button" disabled>⇄ Fotocamera</button>
+        <button id="zoneBtn" class="ghost" type="button" disabled>▧ Disegna zona</button>
+      </div>
+      <p class="privacy-note">🔒 Elaborazione sul dispositivo. Nessun volto riconosciuto, nessuna foto salvata.</p>
+    </section>
+
+    <section class="stats-grid">
+      <article class="stat card"><span>Visibili ora</span><strong id="visibleCount">0</strong><small>nell'inquadratura</small></article>
+      <article class="stat card"><span>Presenti stimati</span><strong id="occupancyCount">0</strong><small>entrati − usciti + base</small></article>
+      <article class="stat card"><span>Entrati</span><strong id="entriesCount">0</strong><small>sessione corrente</small></article>
+      <article class="stat card"><span>Usciti</span><strong id="exitsCount">0</strong><small>sessione corrente</small></article>
+      <article class="stat card"><span>Picco</span><strong id="peakCount">0</strong><small id="peakTime">—</small></article>
+      <article class="stat card"><span>Affollamento</span><strong id="crowdPercent">0%</strong><div class="meter"><i id="crowdMeter"></i></div></article>
+    </section>
+
+    <section id="alertPanel" class="alert-panel card ok">
+      <div class="alert-icon" id="alertIcon">✓</div>
+      <div><strong id="alertTitle">Situazione regolare</strong><p id="alertText">Nessuna anomalia attiva.</p></div>
+    </section>
+
+    <section class="two-col">
+      <article class="card">
+        <div class="section-head"><div><h2>Rilevamento anomalie</h2><p>Gli eventi probabilistici sono indicati come “possibili”.</p></div><span id="anomalyCount" class="counter">0</span></div>
+        <div class="anomaly-grid" id="anomalyGrid">
+          <div class="anomaly-item"><span>👥</span><div><b>Sovraffollamento</b><small>Soglia massima configurabile</small></div><i data-state="crowd">OFF</i></div>
+          <div class="anomaly-item"><span>⏳</span><div><b>Permanenza insolita</b><small>Persona quasi ferma troppo a lungo</small></div><i data-state="stationary">OFF</i></div>
+          <div class="anomaly-item"><span>⚠️</span><div><b>Possibile caduta</b><small>Postura orizzontale persistente</small></div><i data-state="fall">OFF</i></div>
+          <div class="anomaly-item"><span>🏃</span><div><b>Movimento rapido</b><small>Velocità anomala nell'inquadratura</small></div><i data-state="speed">OFF</i></div>
+          <div class="anomaly-item"><span>⛔</span><div><b>Zona riservata</b><small>Ingresso nella zona disegnata</small></div><i data-state="zone">OFF</i></div>
+          <div class="anomaly-item"><span>📈</span><div><b>Aumento improvviso</b><small>Picco di persone in pochi secondi</small></div><i data-state="surge">OFF</i></div>
+          <div class="anomaly-item"><span>🌙</span><div><b>Presenza fuori orario</b><small>Persona rilevata nell'intervallo chiuso</small></div><i data-state="afterHours">OFF</i></div>
+          <div class="anomaly-item"><span>🎒</span><div><b>Oggetto incustodito</b><small>Zaino/borsa/valigia senza persona vicina</small></div><i data-state="object">OFF</i></div>
+          <div class="anomaly-item"><span>🌑</span><div><b>Camera scura/ostruita</b><small>Qualità immagine insufficiente</small></div><i data-state="dark">OFF</i></div>
+        </div>
+      </article>
+
+      <article class="card settings-card">
+        <div class="section-head"><div><h2>Impostazioni</h2><p>Regola le soglie sul posto.</p></div><button id="resetSettingsBtn" class="link-btn" type="button">Ripristina</button></div>
+        <div class="settings-grid">
+          <label>Confidenza AI <output id="confidenceOut">55%</output><input id="confidence" type="range" min="35" max="90" step="5" value="55"></label>
+          <label>Capienza massima <input id="maxOccupancy" type="number" min="1" max="5000" value="50"></label>
+          <label>Presenti iniziali <input id="baseOccupancy" type="number" min="0" max="5000" value="0"></label>
+          <label>Linea ingresso <output id="lineYOut">62%</output><input id="lineY" type="range" min="15" max="85" value="62"></label>
+          <label>Direzione ingresso<select id="entryDirection"><option value="down">Dall'alto verso il basso</option><option value="up">Dal basso verso l'alto</option></select></label>
+          <label>Persona ferma dopo <div class="with-unit"><input id="stationarySeconds" type="number" min="5" max="600" value="30"><span>s</span></div></label>
+          <label>Possibile caduta dopo <div class="with-unit"><input id="fallSeconds" type="number" min="1" max="20" step="1" value="3"><span>s</span></div></label>
+          <label>Soglia movimento rapido <output id="speedOut">38%</output><input id="speedThreshold" type="range" min="10" max="100" value="38"></label>
+          <label>Aumento improvviso <div class="with-unit"><input id="surgeCount" type="number" min="2" max="100" value="5"><span>pers.</span></div></label>
+          <label>Finestra aumento <div class="with-unit"><input id="surgeWindow" type="number" min="2" max="60" value="8"><span>s</span></div></label>
+          <label>Oggetto incustodito dopo <div class="with-unit"><input id="objectSeconds" type="number" min="10" max="600" value="45"><span>s</span></div></label>
+          <label>Apertura <input id="openTime" type="time" value="07:00"></label>
+          <label>Chiusura <input id="closeTime" type="time" value="23:00"></label>
+        </div>
+        <div class="toggles">
+          <label class="switch"><input id="enableStationary" type="checkbox" checked><span></span>Permanenza</label>
+          <label class="switch"><input id="enableFall" type="checkbox" checked><span></span>Caduta</label>
+          <label class="switch"><input id="enableSpeed" type="checkbox"><span></span>Movimento rapido</label>
+          <label class="switch"><input id="enableZone" type="checkbox"><span></span>Zona riservata</label>
+          <label class="switch"><input id="enableSurge" type="checkbox" checked><span></span>Aumento improvviso</label>
+          <label class="switch"><input id="enableAfterHours" type="checkbox"><span></span>Fuori orario</label>
+          <label class="switch"><input id="enableObject" type="checkbox"><span></span>Oggetto incustodito</label>
+          <label class="switch"><input id="enableDark" type="checkbox"><span></span>Camera scura</label>
+          <label class="switch"><input id="soundAlerts" type="checkbox" checked><span></span>Suono/vibrazione</label>
+        </div>
+        <div class="zone-help" id="zoneHelp">Zona riservata non impostata. Tocca <b>Disegna zona</b> e trascina un rettangolo sul video.</div>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="section-head log-head"><div><h2>Registro eventi</h2><p>Salvato solo sul dispositivo.</p></div><div class="log-actions"><button id="exportBtn" class="ghost" type="button">Esporta CSV</button><button id="clearBtn" class="ghost danger-text" type="button">Azzera registro</button></div></div>
+      <div id="eventLog" class="event-log"><div class="empty-log">Nessun evento registrato.</div></div>
+    </section>
+
+    <section class="card info-card">
+      <h2>Limiti importanti</h2>
+      <p>PeopleLens AI è uno strumento di supporto: conteggio e anomalie possono sbagliare per occlusioni, luce, prospettiva o prestazioni del telefono. “Possibile caduta”, “movimento rapido” e “oggetto incustodito” non sostituiscono sistemi di sicurezza certificati né la verifica umana.</p>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
