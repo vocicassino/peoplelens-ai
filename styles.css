@@ -105,3 +105,21 @@ body.camera-immersive .full-alert{top:max(112px,calc(env(safe-area-inset-top) + 
 body.camera-immersive .gate-calib-hint{top:max(112px,calc(env(safe-area-inset-top) + 100px))}
 @media(max-width:560px){body.camera-immersive .gate-quick-map{right:74px;gap:5px}.gate-quick-title{min-width:42px;padding:4px 5px}.gate-quick-item{min-width:92px;max-width:126px}.gate-quick-pick{padding:5px}.gate-quick-code{width:24px;height:24px}.gate-quick-toggle{width:34px}.gate-quick-name{font-size:.56rem}.gate-quick-pick small{font-size:.46rem}}
 @media(max-width:390px){body.camera-immersive .gate-quick-map{left:8px;right:68px}.gate-quick-title{display:none}.gate-quick-item{min-width:84px;max-width:112px}.gate-quick-toggle{width:31px}.gate-quick-code{width:22px;height:22px;font-size:.56rem}.gate-quick-name{font-size:.52rem}}
+
+/* ===== PeopleLens AI V2.6 · Long Range ===== */
+.scan-badge{position:absolute;z-index:7;top:88px;right:12px;padding:6px 9px;border-radius:999px;font-size:.58rem;font-weight:950;letter-spacing:.035em;background:rgba(24,12,45,.78);border:1px solid rgba(182,140,255,.48);color:#d9c3ff;backdrop-filter:blur(8px);max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.camera-zoom{position:absolute;z-index:9;top:124px;right:12px;display:flex;align-items:center;overflow:hidden;border-radius:999px;background:rgba(4,12,22,.78);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(9px)}
+.camera-zoom button{width:38px;height:38px;border:0;background:transparent;color:#fff;font-size:1.05rem;font-weight:900}.camera-zoom button:disabled{opacity:.35}.camera-zoom strong{min-width:38px;text-align:center;font-size:.65rem;color:#c8daf0}
+.priority-hint{position:absolute;z-index:19;left:50%;top:92px;transform:translateX(-50%);width:min(88%,440px);padding:9px 12px;border-radius:13px;text-align:center;background:rgba(5,56,72,.91);border:1px solid rgba(66,217,255,.66);backdrop-filter:blur(10px);pointer-events:none}.priority-hint b{display:block;color:#9aedff;font-size:.7rem;letter-spacing:.07em}.priority-hint span{display:block;margin-top:2px;color:#e2f9ff;font-size:.64rem}
+.priority-help{margin-top:9px;padding:9px 10px;border-radius:11px;background:rgba(66,217,255,.06);border:1px solid rgba(66,217,255,.18);display:flex;align-items:center;justify-content:space-between;gap:10px}.priority-help>div{min-width:0;display:grid;gap:2px}.priority-help b{font-size:.68rem;color:#bfefff}.priority-help span{font-size:.62rem;line-height:1.35;color:#8fa9bd}.priority-help button{flex:0 0 auto;min-height:36px;padding:7px 9px;border-radius:9px;border:1px solid rgba(66,217,255,.22);background:#102139;color:#ccefff;font-size:.62rem;font-weight:850}.priority-help button:disabled{opacity:.35}
+body.camera-immersive .scan-badge{top:max(88px,calc(env(safe-area-inset-top) + 76px));right:12px}
+body.camera-immersive .camera-zoom{top:max(124px,calc(env(safe-area-inset-top) + 112px));right:12px}
+body.camera-immersive .priority-hint{top:max(112px,calc(env(safe-area-inset-top) + 100px))}
+body.camera-immersive #priorityBtn{border-color:rgba(66,217,255,.3)!important}
+body.camera-immersive #aiModeBtn{border-color:rgba(182,140,255,.28)!important}
+@media(max-width:560px){.scan-badge{font-size:.52rem;max-width:130px}.camera-zoom button{width:34px;height:34px}.camera-zoom strong{min-width:34px}.priority-hint{top:86px}.priority-help{align-items:flex-start}.priority-help button{min-height:34px;padding:6px 8px}body.camera-immersive .camera-controls{row-gap:5px;bottom:max(72px,calc(env(safe-area-inset-bottom) + 62px))}body.camera-immersive .camera-controls button{padding:7px 9px;font-size:.62rem}}
+@media(max-width:390px){body.camera-immersive .scan-badge{right:8px}.camera-zoom{right:8px}.priority-hint{width:92%}body.camera-immersive .camera-controls button{padding:6px 8px;font-size:.57rem}}
+/* Fullscreen V2.6: controlli in una sola barra scorrevole, senza coprire il video con due righe. */
+body.camera-immersive .camera-controls{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;pointer-events:auto;padding:2px 54px 2px 2px}
+body.camera-immersive .camera-controls::-webkit-scrollbar{display:none}
+body.camera-immersive .camera-controls button{flex:0 0 auto}

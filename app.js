@@ -6,8 +6,9 @@ import { addEvent, getEvents, clearEvents } from './db.js';
 const $ = s => document.querySelector(s);
 const els = {
   video: $('#video'), overlay: $('#overlay'), cameraWrap: $('#cameraWrap'), emptyCamera: $('#emptyCamera'),
-  startBtn: $('#startBtn'), stopBtn: $('#stopBtn'), switchBtn: $('#switchBtn'), zoneBtn: $('#zoneBtn'), gateBtn: $('#gateBtn'), installBtn: $('#installBtn'), exitViewBtn: $('#exitViewBtn'),
-  modelBadge: $('#modelBadge'), liveBadge: $('#liveBadge'), fpsBadge: $('#fpsBadge'), poseBadge: $('#poseBadge'), cameraHud: $('#cameraHud'),
+  startBtn: $('#startBtn'), stopBtn: $('#stopBtn'), switchBtn: $('#switchBtn'), zoneBtn: $('#zoneBtn'), gateBtn: $('#gateBtn'), priorityBtn: $('#priorityBtn'), aiModeBtn: $('#aiModeBtn'), installBtn: $('#installBtn'), exitViewBtn: $('#exitViewBtn'),
+  modelBadge: $('#modelBadge'), liveBadge: $('#liveBadge'), fpsBadge: $('#fpsBadge'), poseBadge: $('#poseBadge'), scanBadge: $('#scanBadge'), cameraHud: $('#cameraHud'),
+  cameraZoom: $('#cameraZoom'), zoomOutBtn: $('#zoomOutBtn'), zoomInBtn: $('#zoomInBtn'), zoomLabel: $('#zoomLabel'), priorityHint: $('#priorityHint'),
   visibleCount: $('#visibleCount'), occupancyCount: $('#occupancyCount'), entriesCount: $('#entriesCount'), exitsCount: $('#exitsCount'), peakCount: $('#peakCount'), peakTime: $('#peakTime'), crowdPercent: $('#crowdPercent'), crowdMeter: $('#crowdMeter'),
   avgDwell: $('#avgDwell'), poseStatus: $('#poseStatus'), hudVisible: $('#hudVisible'), hudOccupancy: $('#hudOccupancy'), hudEntries: $('#hudEntries'), hudExits: $('#hudExits'),
   alertPanel: $('#alertPanel'), alertIcon: $('#alertIcon'), alertTitle: $('#alertTitle'), alertText: $('#alertText'), anomalyCount: $('#anomalyCount'), eventLog: $('#eventLog'), toast: $('#toast'), zoneHelp: $('#zoneHelp'),
@@ -16,7 +17,7 @@ const els = {
   gateSelector: $('#gateSelector'), gateName: $('#gateName'), gateEnabled: $('#gateEnabled'), gateSummary: $('#gateSummary'), gateCountLabel: $('#gateCountLabel'), calibrateGateBtn: $('#calibrateGateBtn'), addGateBtn: $('#addGateBtn'), deleteGateBtn: $('#deleteGateBtn'),
   personInspector: $('#personInspector'), personInspectorId: $('#personInspectorId'), personInspectorClose: $('#personInspectorClose'), personRisk: $('#personRisk'), personRiskLabel: $('#personRiskLabel'), personRiskDetail: $('#personRiskDetail'),
   personDwell: $('#personDwell'), personSpeed: $('#personSpeed'), personPose: $('#personPose'), personConfidence: $('#personConfidence'), personCrossing: $('#personCrossing'), personPosition: $('#personPosition'), personFlags: $('#personFlags'), personTrackStatus: $('#personTrackStatus'),
-  followBtn: $('#followBtn'), personPath: $('#personPath'), personFollowState: $('#personFollowState')
+  followBtn: $('#followBtn'), personPath: $('#personPath'), personFollowState: $('#personFollowState'), priorityHelp: $('#priorityHelp'), priorityHelpText: $('#priorityHelpText'), clearPriorityBtn: $('#clearPriorityBtn')
 };
 
 let model=null, poseDetector=null, poseReady=false, poseLoadFailed=false, latestPoses=[];
@@ -29,11 +30,14 @@ let clusterSince=null, dwellTotalMs=0, dwellSamples=0, currentTracks=[];
 let selectedTrackId=null, followTrackId=null;
 let draggingLine=false, linePointerId=null, lineDragMode=null, lineDragStart=null, lineDragOriginal=null, lineDragGateId=null;
 let calibrateMode=false, calibrationPoints=[], calibrationPointerId=null;
+let priorityDrawMode=false, priorityStart=null, tempPriorityZone=null, priorityPointerId=null;
 let gateSessionStats=new Map();
+let cropCanvas=document.createElement('canvas'), tileCursor=0, lastScanSources=['FULL'];
+let cameraZoomCaps=null, cameraZoomValue=1;
 const bagClasses=new Set(['backpack','handbag','suitcase']);
 const heatCols=16, heatRows=9; let heatGrid=new Array(heatCols*heatRows).fill(0);
 
-const settingIds=['confidence','maxOccupancy','baseOccupancy','trailSeconds','stationarySeconds','fallSeconds','fallEscalationSeconds','speedThreshold','surgeCount','surgeWindow','clusterCount','clusterSeconds','clusterRadius','objectSeconds','zoneDwellSeconds','loopWindowSeconds','loopPathThreshold','openTime','closeTime','enableStationary','enableFall','enableSpeed','enableZone','enableSurge','enableCluster','enableAfterHours','enableObject','enableDark','enableLoop','enableZoneDwell','enableWrongWay','soundAlerts'];
+const settingIds=['detectionMode','confidence','maxOccupancy','baseOccupancy','trailSeconds','stationarySeconds','fallSeconds','fallEscalationSeconds','speedThreshold','surgeCount','surgeWindow','clusterCount','clusterSeconds','clusterRadius','objectSeconds','zoneDwellSeconds','loopWindowSeconds','loopPathThreshold','openTime','closeTime','enableStationary','enableFall','enableSpeed','enableZone','enableSurge','enableCluster','enableAfterHours','enableObject','enableDark','enableLoop','enableZoneDwell','enableWrongWay','soundAlerts'];
 
 function makeGate(index=0,base=null){
   const y=Math.min(.88,.28+(index%5)*.13);
@@ -75,7 +79,7 @@ function activeGate(){return settings.gates.find(g=>g.id===settings.activeGateId
 function saveSettings(){ localStorage.setItem('peoplelensSettings',JSON.stringify(settings)); }
 function hydrateSettings(){
   for(const id of settingIds){ const el=$('#'+id); if(!el) continue; const v=settings[id]; if(el.type==='checkbox')el.checked=!!v; else if(id==='confidence')el.value=Math.round(v*100); else if(id==='speedThreshold'||id==='clusterRadius'||id==='loopPathThreshold')el.value=Math.round(v*100); else el.value=v; }
-  hydrateGateControls(); updateOutputs(); updateZoneHelp();
+  hydrateGateControls(); updateOutputs(); updateZoneHelp(); updatePriorityHelp();
 }
 function hydrateGateControls(){
   const g=activeGate(); if(!g)return;
@@ -103,7 +107,7 @@ function updateOutputs(){
   $('#speedOut').textContent=Math.round(settings.speedThreshold*100)+'%';
   $('#clusterRadiusOut').textContent=Math.round(settings.clusterRadius*100)+'%';
   $('#loopPathOut').textContent=Math.round(settings.loopPathThreshold*100)+'%';
-  renderGateSummary();
+  renderGateSummary(); updateModeUi();
 }
 function renderGateSummary(){
   if(!els.gateSummary)return;
@@ -113,7 +117,7 @@ function renderGateSummary(){
 function renderGateQuickMap(){
   if(!els.gateQuickMap||!els.gateQuickList)return;
   const immersed=document.body.classList.contains('camera-immersive');
-  const shouldShow=running&&immersed&&!calibrateMode&&!drawZoneMode;
+  const shouldShow=running&&immersed&&!calibrateMode&&!drawZoneMode&&!priorityDrawMode;
   els.gateQuickMap.classList.toggle('hidden',!shouldShow);
   const active=activeGate(),activeIndex=Math.max(0,settings.gates.findIndex(g=>g.id===active?.id));
   if(els.gateQuickActive)els.gateQuickActive.textContent=`V${activeIndex+1}`;
@@ -141,8 +145,26 @@ function setActiveGate(id,announce=false){
 }
 function updateZoneHelp(){ els.zoneHelp.innerHTML=settings.restrictedZone?'Zona riservata impostata. Attiva <b>Zona riservata</b> per generare gli avvisi.':'Zona riservata non impostata. Tocca <b>Disegna zona</b> e trascina un rettangolo sul video.'; }
 
+function modeMeta(mode=settings.detectionMode){return mode==='long'?{icon:'🔭',label:'Lunga distanza',short:'LONG'}:mode==='fast'?{icon:'⚡',label:'Veloce',short:'FULL'}:{icon:'⚖',label:'Bilanciata',short:'BAL'};}
+function updateModeUi(){
+  const m=modeMeta();
+  if(els.aiModeBtn)els.aiModeBtn.textContent=`${m.icon} ${m.label}`;
+  if(els.scanBadge&&running){els.scanBadge.classList.remove('hidden');els.scanBadge.textContent=`AI ${lastScanSources.join('+')}`;}
+}
+function updatePriorityHelp(){
+  const on=!!settings.priorityZone;
+  if(els.priorityHelpText)els.priorityHelpText.textContent=on?'Zona prioritaria impostata: viene analizzata ingrandita nelle modalità Bilanciata e Lunga distanza.':'Non impostata. In modalità Bilanciata/Lunga distanza puoi dedicare più analisi a una zona lontana.';
+  if(els.clearPriorityBtn)els.clearPriorityBtn.disabled=!on;
+}
+function setDetectionMode(mode,announce=true){
+  settings.detectionMode=['fast','balanced','long'].includes(mode)?mode:'balanced';saveSettings();
+  const sel=$('#detectionMode');if(sel)sel.value=settings.detectionMode;lastScanSources=['FULL'];updateModeUi();
+  if(announce)toast(`${modeMeta().icon} Modalità ${modeMeta().label}.`);
+}
+function cycleDetectionMode(){const list=['fast','balanced','long'],i=list.indexOf(settings.detectionMode);setDetectionMode(list[(i+1)%list.length]);}
+
 async function loadModels(){
-  els.modelBadge.textContent='Caricamento AI V2.5…'; els.modelBadge.className='pill warn';
+  els.modelBadge.textContent='Caricamento AI V2.6…'; els.modelBadge.className='pill warn';
   try{
     await tf.ready(); try{await tf.setBackend('webgl')}catch{}
     model=await cocoSsd.load({base:'lite_mobilenet_v2'});
@@ -151,7 +173,7 @@ async function loadModels(){
 
   try{
     poseDetector=await createPoseDetector(); poseReady=true;
-    els.modelBadge.textContent='AI V2.5 pronta · '+tf.getBackend(); els.poseStatus.textContent='ON';
+    els.modelBadge.textContent='AI V2.6 pronta · '+tf.getBackend(); els.poseStatus.textContent='ON';
   } catch(err){
     console.warn('MoveNet non disponibile, uso fallback:',err); poseLoadFailed=true; poseReady=false; els.poseStatus.textContent='Fallback';
     els.modelBadge.textContent='AI pronta · pose fallback';
@@ -160,7 +182,7 @@ async function loadModels(){
 
 async function enterImmersive(){
   document.body.classList.add('camera-immersive');
-  els.exitViewBtn.classList.remove('hidden'); els.cameraHud.classList.remove('hidden'); renderGateQuickMap();
+  els.exitViewBtn.classList.remove('hidden'); els.cameraHud.classList.remove('hidden'); renderGateQuickMap(); updateModeUi();
   try{
     if(!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen({navigationUI:'hide'});
   }catch(err){ console.debug('Fullscreen API non disponibile:',err?.message); }
@@ -176,16 +198,16 @@ async function startCamera(){
   await enterImmersive();
   try{
     stopTracks();
-    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:currentFacing},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:24,max:30}}});
+    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:currentFacing},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:24,max:30}}});
     els.video.srcObject=stream; await els.video.play(); running=true; resetSession();
-    els.startBtn.disabled=true; els.stopBtn.disabled=false; els.switchBtn.disabled=false; els.zoneBtn.disabled=false; if(els.gateBtn)els.gateBtn.disabled=false; els.emptyCamera.classList.add('hidden'); els.liveBadge.classList.remove('hidden'); els.fpsBadge.classList.remove('hidden');
+    els.startBtn.disabled=true; els.stopBtn.disabled=false; els.switchBtn.disabled=false; els.zoneBtn.disabled=false; if(els.gateBtn)els.gateBtn.disabled=false; if(els.priorityBtn)els.priorityBtn.disabled=false; if(els.aiModeBtn)els.aiModeBtn.disabled=false; els.emptyCamera.classList.add('hidden'); els.liveBadge.classList.remove('hidden'); els.fpsBadge.classList.remove('hidden');
     if(poseReady) els.poseBadge.classList.remove('hidden'); else els.poseBadge.classList.add('hidden');
-    ensureAudio(); resizeCanvas(); ensureEditableLineVisible(true); renderGateQuickMap(); requestAnimationFrame(loop);
+    ensureAudio(); resizeCanvas(); ensureEditableLineVisible(true); await configureCameraZoom(); renderGateQuickMap(); updateModeUi(); requestAnimationFrame(loop);
   }catch(err){ console.error(err); await exitImmersive(); toast(err.name==='NotAllowedError'?'Permesso fotocamera negato.':'Fotocamera non disponibile.'); }
 }
 function stopTracks(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null} }
-async function stopCamera(){ cancelGateCalibration(); selectedTrackId=null; followTrackId=null; closePersonInspector(); running=false; stopTracks(); els.video.srcObject=null; els.startBtn.disabled=false; els.stopBtn.disabled=true; els.switchBtn.disabled=true; els.zoneBtn.disabled=true; if(els.gateBtn)els.gateBtn.disabled=true; els.emptyCamera.classList.remove('hidden'); els.liveBadge.classList.add('hidden'); els.fpsBadge.classList.add('hidden'); els.poseBadge.classList.add('hidden'); els.fullAlert.classList.add('hidden'); els.gateQuickMap?.classList.add('hidden'); clearOverlay(); await exitImmersive(); }
-async function switchCamera(){ currentFacing=currentFacing==='environment'?'user':'environment'; if(!running)return; try{stopTracks(); stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:currentFacing},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:24,max:30}}});els.video.srcObject=stream;await els.video.play();personTracker.reset();objectTracker.reset();latestPoses=[];selectedTrackId=null;followTrackId=null;closePersonInspector();resizeCanvas();ensureEditableLineVisible(true);resetLineSides();toast(currentFacing==='environment'?'Fotocamera posteriore':'Fotocamera anteriore');}catch(err){toast('Impossibile cambiare fotocamera.');console.error(err)} }
+async function stopCamera(){ cancelGateCalibration(); cancelPriorityDraw(); selectedTrackId=null; followTrackId=null; closePersonInspector(); running=false; stopTracks(); els.video.srcObject=null; els.startBtn.disabled=false; els.stopBtn.disabled=true; els.switchBtn.disabled=true; els.zoneBtn.disabled=true; if(els.gateBtn)els.gateBtn.disabled=true; if(els.priorityBtn)els.priorityBtn.disabled=true; if(els.aiModeBtn)els.aiModeBtn.disabled=true; els.emptyCamera.classList.remove('hidden'); els.liveBadge.classList.add('hidden'); els.fpsBadge.classList.add('hidden'); els.poseBadge.classList.add('hidden'); els.scanBadge?.classList.add('hidden'); els.cameraZoom?.classList.add('hidden'); els.fullAlert.classList.add('hidden'); els.gateQuickMap?.classList.add('hidden'); clearOverlay(); await exitImmersive(); }
+async function switchCamera(){ currentFacing=currentFacing==='environment'?'user':'environment'; if(!running)return; try{stopTracks(); stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:currentFacing},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:24,max:30}}});els.video.srcObject=stream;await els.video.play();personTracker.reset();objectTracker.reset();latestPoses=[];selectedTrackId=null;followTrackId=null;closePersonInspector();resizeCanvas();ensureEditableLineVisible(true);await configureCameraZoom();resetLineSides();toast(currentFacing==='environment'?'Fotocamera posteriore':'Fotocamera anteriore');}catch(err){toast('Impossibile cambiare fotocamera.');console.error(err)} }
 function resetSession(){ selectedTrackId=null; followTrackId=null; closePersonInspector(); gateSessionStats=new Map(settings.gates.map(g=>[g.id,{entries:0,exits:0}])); entries=0; exits=0; peak=0; peakAt=null; occupancy=settings.baseOccupancy; visible=0; recentCounts=[]; personTracker.reset();objectTracker.reset();anomalyCooldown.clear();activeStates.clear();clusterSince=null;dwellTotalMs=0;dwellSamples=0;currentTracks=[];latestPoses=[];heatGrid.fill(0);drawHeatmap();updateStats();renderGateQuickMap(); }
 
 function resizeCanvas(){ const v=els.video,c=els.overlay; if(!v.videoWidth)return; if(c.width!==v.videoWidth||c.height!==v.videoHeight){c.width=v.videoWidth;c.height=v.videoHeight;} }
@@ -193,7 +215,7 @@ function clearOverlay(){ const c=els.overlay; c.getContext('2d').clearRect(0,0,c
 
 async function loop(ts){
   if(!running)return; resizeCanvas(); drawGuides(currentTracks);
-  const targetInterval=230;
+  const targetInterval=settings.detectionMode==='long'?360:settings.detectionMode==='balanced'?280:230;
   if(!inferenceBusy && ts-lastInference>=targetInterval && els.video.readyState>=2){
     inferenceBusy=true; lastInference=ts;
     try{ await inferFrame(); }catch(err){console.error(err)} finally{ inferenceBusy=false; }
@@ -202,7 +224,7 @@ async function loop(ts){
 }
 
 async function inferFrame(){
-  const now=performance.now(); const preds=await model.detect(els.video,35,settings.confidence); aiFrames++;
+  const now=performance.now(); const preds=await detectScene(); aiFrames++;
   const persons=preds.filter(p=>p.class==='person'); const objects=preds.filter(p=>bagClasses.has(p.class));
   const tracks=personTracker.update(persons,els.overlay.width,els.overlay.height,now); const objTracks=objectTracker.update(objects,els.overlay.width,els.overlay.height,now);
   const ended=personTracker.drainEnded(); for(const t of ended){ if(t.ageMs>1200){dwellTotalMs+=t.ageMs;dwellSamples++;} }
@@ -215,6 +237,47 @@ async function inferFrame(){
   currentTracks=tracks;
   visible=tracks.length; processCrossings(tracks,now); occupancy=Math.max(0,settings.baseOccupancy+entries-exits); if(occupancy>peak){peak=occupancy;peakAt=Date.now();}
   updateHeatmap(tracks); processAnomalies(tracks,objTracks,now); renderPersonInspector(now); drawGuides(tracks,objTracks); updateStats(); updateFps(now);
+}
+
+function cropRegions(){
+  const o=.08, w=.58, h=.58;
+  return [
+    {x:0,y:0,w,h,label:'T1'}, {x:1-w,y:0,w,h,label:'T2'},
+    {x:0,y:1-h,w,h,label:'T3'}, {x:1-w,y:1-h,w,h,label:'T4'},
+  ];
+}
+function iou(a,b){
+  const [ax,ay,aw,ah]=a,[bx,by,bw,bh]=b,ix=Math.max(ax,bx),iy=Math.max(ay,by),ir=Math.min(ax+aw,bx+bw),ib=Math.min(ay+ah,by+bh);
+  const inter=Math.max(0,ir-ix)*Math.max(0,ib-iy);return inter/Math.max(1,aw*ah+bw*bh-inter);
+}
+function mergePredictions(preds){
+  const sorted=preds.slice().sort((a,b)=>b.score-a.score),keep=[];
+  for(const p of sorted){if(keep.some(k=>k.class===p.class&&iou(k.bbox,p.bbox)>.43))continue;keep.push(p);if(keep.length>=55)break;}
+  return keep;
+}
+async function detectCrop(region,source,threshold){
+  const v=els.video,sw=v.videoWidth,sh=v.videoHeight;if(!sw||!sh)return[];
+  const sx=Math.round(region.x*sw),sy=Math.round(region.y*sh),rw=Math.max(2,Math.round(region.w*sw)),rh=Math.max(2,Math.round(region.h*sh));
+  const maxSide=settings.detectionMode==='long'?704:576,ratio=rw/rh;
+  let dw,dh;if(ratio>=1){dw=maxSide;dh=Math.max(224,Math.round(maxSide/ratio));}else{dh=maxSide;dw=Math.max(224,Math.round(maxSide*ratio));}
+  cropCanvas.width=dw;cropCanvas.height=dh;const ctx=cropCanvas.getContext('2d',{alpha:false});ctx.drawImage(v,sx,sy,rw,rh,0,0,dw,dh);
+  const out=await model.detect(cropCanvas,35,threshold);
+  return out.map(d=>({...d,source,bbox:[sx+d.bbox[0]/dw*rw,sy+d.bbox[1]/dh*rh,d.bbox[2]/dw*rw,d.bbox[3]/dh*rh]}));
+}
+async function detectScene(){
+  const full=(await model.detect(els.video,40,settings.confidence)).map(d=>({...d,source:'full'}));
+  if(settings.detectionMode==='fast'){lastScanSources=['FULL'];updateModeUi();return full;}
+  const all=[...full],sources=['FULL'];
+  if(settings.priorityZone){
+    const th=Math.max(.26,settings.confidence-(settings.detectionMode==='long'?.20:.14));
+    all.push(...await detectCrop(settings.priorityZone,'priority',th));sources.push('PRIORITY');
+  }
+  const tiles=cropRegions(),tileRuns=settings.detectionMode==='long'?(settings.priorityZone?1:2):(!settings.priorityZone?1:0);
+  for(let i=0;i<tileRuns;i++){
+    const tile=tiles[tileCursor%tiles.length];tileCursor=(tileCursor+1)%tiles.length;
+    all.push(...await detectCrop(tile,'tile',Math.max(.30,settings.confidence-.16)));sources.push(tile.label);
+  }
+  lastScanSources=sources;updateModeUi();return mergePredictions(all);
 }
 
 function linePointsPx(gate=activeGate()){
@@ -400,15 +463,16 @@ function drawGuides(tracks=[],objTracks=[]){
   if(active)drawSingleGate(ctx,active,true);
   ctx.save();
   if(calibrateMode&&calibrationPoints.length){const p=calibrationPoints[0],a={x:p.x*c.width,y:p.y*c.height};ctx.strokeStyle='#ffd166';ctx.fillStyle='#ffd166';ctx.lineWidth=Math.max(3,c.width/420);ctx.beginPath();ctx.arc(a.x,a.y,Math.max(8,c.width/160),0,Math.PI*2);ctx.fill();if(calibrationPoints.length>1){const q=calibrationPoints[1],b={x:q.x*c.width,y:q.y*c.height};ctx.setLineDash([10,7]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);}}
+  const pzone=tempPriorityZone||settings.priorityZone;if(pzone){const px=pzone.x*c.width,py=pzone.y*c.height,pw=pzone.w*c.width,ph=pzone.h*c.height;ctx.fillStyle='rgba(66,217,255,.10)';ctx.fillRect(px,py,pw,ph);ctx.strokeStyle='#42d9ff';ctx.lineWidth=Math.max(2,c.width/520);ctx.setLineDash([11,7]);ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);ctx.fillStyle='#8cecff';ctx.font=`800 ${Math.max(11,c.width/75)}px system-ui`;ctx.fillText('🎯 ZONA AI PRIORITARIA',px+8,py+20);}
   const zone=tempZone||settings.restrictedZone; if(zone){const zx=zone.x*c.width,zy=zone.y*c.height,zw=zone.w*c.width,zh=zone.h*c.height;ctx.fillStyle='rgba(255,93,104,.13)';ctx.fillRect(zx,zy,zw,zh);ctx.strokeStyle='#ff5d68';ctx.lineWidth=3;ctx.setLineDash([9,6]);ctx.strokeRect(zx,zy,zw,zh);ctx.setLineDash([]);ctx.fillStyle='#ff9ca3';ctx.fillText('ZONA RISERVATA',zx+8,zy+20);}
   const followed=followTrackId!=null?tracks.find(t=>t.id===followTrackId):null;if(followed){drawTrackTrail(ctx,followed,performance.now());}
   for(const t of tracks){
     const [x,bY,w,h]=t.bbox; const poseFall=t.poseFallSince!=null && (performance.now()-t.poseFallSince)/1000>=settings.fallSeconds; const selected=t.id===selectedTrackId;
-    ctx.strokeStyle=selected?'#ffd166':poseFall?'#ff5d68':'#33d17a';ctx.lineWidth=selected?Math.max(4,c.width/300):Math.max(2,c.width/500);ctx.strokeRect(x,bY,w,h);ctx.fillStyle=selected?'rgba(87,62,10,.88)':'rgba(4,14,24,.78)';const labelW=Math.min(selected?210:150,Math.max(w,110));ctx.fillRect(x,Math.max(0,bY-24),labelW,22);ctx.fillStyle='#fff';ctx.fillText(`P${t.id} ${Math.round(t.score*100)}%${t.id===followTrackId?' · FOLLOW':selected?' · SELEZIONATA':''}`,x+5,Math.max(15,bY-8));
+    const src=t.source||'full',srcColor=src==='priority'?'#42d9ff':src==='tile'?'#b68cff':'#33d17a',srcTag=src==='priority'?' · LR🎯':src==='tile'?' · LR':'';ctx.strokeStyle=selected?'#ffd166':poseFall?'#ff5d68':srcColor;ctx.lineWidth=selected?Math.max(4,c.width/300):Math.max(2,c.width/500);ctx.strokeRect(x,bY,w,h);ctx.fillStyle=selected?'rgba(87,62,10,.88)':'rgba(4,14,24,.78)';const labelW=Math.min(selected?230:180,Math.max(w,110));ctx.fillRect(x,Math.max(0,bY-24),labelW,22);ctx.fillStyle='#fff';ctx.fillText(`P${t.id} ${Math.round(t.score*100)}%${srcTag}${t.id===followTrackId?' · FOLLOW':selected?' · SELEZIONATA':''}`,x+5,Math.max(15,bY-8));
     if(t.pose) drawPose(ctx,t.pose,{strokeStyle:poseFall?'#ff7b85':'#5ed0ff',pointStyle:'#ffffff',lineWidth:Math.max(2,c.width/600)});
   }
   for(const o of objTracks){const [x,bY,w,h]=o.bbox;ctx.strokeStyle='#ffb02e';ctx.lineWidth=2;ctx.strokeRect(x,bY,w,h);ctx.fillStyle='#ffcf76';ctx.fillText(`O${o.id} ${o.class}`,x+4,Math.max(15,bY-6));}
-  if(drawZoneMode){ctx.fillStyle='rgba(255,176,46,.92)';ctx.fillRect(10,c.height-36,290,26);ctx.fillStyle='#07101d';ctx.fillText('TRASCINA PER DISEGNARE LA ZONA',16,c.height-18)}
+  if(drawZoneMode){ctx.fillStyle='rgba(255,176,46,.92)';ctx.fillRect(10,c.height-36,290,26);ctx.fillStyle='#07101d';ctx.fillText('TRASCINA PER DISEGNARE LA ZONA',16,c.height-18)} if(priorityDrawMode){ctx.fillStyle='rgba(66,217,255,.94)';ctx.fillRect(10,c.height-36,330,26);ctx.fillStyle='#07101d';ctx.fillText('TRASCINA LA ZONA AI PRIORITARIA',16,c.height-18)}
   ctx.restore();
 }
 
@@ -424,7 +488,7 @@ function sourcePointFromPointer(e){
 }
 
 function selectTrackAtPointer(e){
-  if(drawZoneMode||calibrateMode||!running||!currentTracks.length)return;
+  if(drawZoneMode||priorityDrawMode||calibrateMode||!running||!currentTracks.length)return;
   const p=sourcePointFromPointer(e);
   const candidates=currentTracks.filter(t=>{
     const [x,y,w,h]=t.bbox; const pad=Math.max(8,Math.min(w,h)*.08);
@@ -525,7 +589,7 @@ function toast(msg){els.toast.textContent=msg;els.toast.classList.add('show');cl
 
 async function exportCsv(){
   const ev=await getEvents(10000);const rows=[['data','ora','tipo','gravita','varco','messaggio','visibili','presenti_stimati','entrati','usciti'],...ev.slice().reverse().map(e=>{const d=new Date(e.ts);return[d.toLocaleDateString('it-IT'),d.toLocaleTimeString('it-IT'),e.type,e.severity,e.gateName||'',e.message,e.visible,e.occupancy,e.entries,e.exits]})];
-  const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='peoplelens-v2.5-eventi-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='peoplelens-v2.6-eventi-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
 function getObjectFitTransform(){
@@ -561,7 +625,7 @@ function nearestGateAtPointer(e){
   return best;
 }
 function lineHandleHit(e){
-  if(!running||drawZoneMode||calibrateMode)return null;
+  if(!running||drawZoneMode||priorityDrawMode||calibrateMode)return null;
   const gate=activeGate();if(!gate)return null;const p=sourcePointFromPointer(e),g=lineHandleGeometry(gate);
   const hitRadius=Math.max(g.radius*1.65,30*g.inv);
   if(Math.hypot(p.x-g.a.x,p.y-g.a.y)<=hitRadius)return'a';
@@ -588,7 +652,7 @@ function setCalibrationUi(on,text='Tocca il punto A del passaggio.'){
 }
 function startGateCalibration(){
   if(!running){toast('Avvia prima la fotocamera.');return;}if(calibrateMode){cancelGateCalibration();return;}
-  drawZoneMode=false;zoneStart=null;tempZone=null;if(els.zoneBtn)els.zoneBtn.textContent='▧ Disegna zona';closePersonInspector();calibrationPoints=[];setCalibrationUi(true,`Tocca il punto A di ${activeGate()?.name||'varco'}.`);toast('Calibrazione: tocca il primo lato del passaggio.');drawGuides(currentTracks);
+  drawZoneMode=false;zoneStart=null;tempZone=null;if(els.zoneBtn)els.zoneBtn.textContent='▧ Disegna zona';cancelPriorityDraw();closePersonInspector();calibrationPoints=[];setCalibrationUi(true,`Tocca il punto A di ${activeGate()?.name||'varco'}.`);toast('Calibrazione: tocca il primo lato del passaggio.');drawGuides(currentTracks);
 }
 function cancelGateCalibration(){calibrationPoints=[];calibrationPointerId=null;setCalibrationUi(false);drawGuides(currentTracks);}
 function calibrationTap(e){
@@ -600,6 +664,7 @@ function calibrationTap(e){
 function beginPointerAction(e){
   if(!running)return;
   if(calibrateMode){calibrationPointerId=e.pointerId;els.overlay.setPointerCapture?.(e.pointerId);return;}
+  if(priorityDrawMode){const p=canvasPoint(e);priorityStart=p;tempPriorityZone={x:p.x,y:p.y,w:0,h:0};priorityPointerId=e.pointerId;els.overlay.setPointerCapture?.(e.pointerId);return;}
   if(drawZoneMode){const p=canvasPoint(e);zoneStart=p;tempZone={x:p.x,y:p.y,w:0,h:0};els.overlay.setPointerCapture?.(e.pointerId);return;}
   const hit=lineHandleHit(e);
   if(hit){const gate=activeGate();draggingLine=true;lineDragMode=hit;linePointerId=e.pointerId;lineDragGateId=gate.id;lineDragStart=canvasPoint(e);lineDragOriginal={a:{...gate.a},b:{...gate.b}};els.overlay.setPointerCapture?.(e.pointerId);if(navigator.vibrate)navigator.vibrate(20);drawGuides(currentTracks);return;}
@@ -607,17 +672,31 @@ function beginPointerAction(e){
 }
 function movePointerAction(e){
   if(draggingLine&&e.pointerId===linePointerId){setLineFromPointer(e,false);return;}
-  if(zoneStart&&drawZoneMode){const p=canvasPoint(e);tempZone=normalizeZone(zoneStart,p);drawGuides(currentTracks);}
+  if(priorityStart&&priorityDrawMode&&e.pointerId===priorityPointerId){const p=canvasPoint(e);tempPriorityZone=normalizeZone(priorityStart,p);drawGuides(currentTracks);return;} if(zoneStart&&drawZoneMode){const p=canvasPoint(e);tempZone=normalizeZone(zoneStart,p);drawGuides(currentTracks);}
 }
 function endPointerAction(e){
   if(calibrateMode&&e.pointerId===calibrationPointerId){calibrationPointerId=null;calibrationTap(e);return;}
   if(draggingLine&&e.pointerId===linePointerId){setLineFromPointer(e,true);draggingLine=false;linePointerId=null;const mode=lineDragMode;lineDragMode=null;lineDragStart=null;lineDragOriginal=null;lineDragGateId=null;resetLineSides();toast(mode==='move'?'Varco spostato.':'Varco ruotato/ridimensionato.');drawGuides(currentTracks);return;}
+  if(priorityDrawMode&&priorityStart&&e.pointerId===priorityPointerId){const p=canvasPoint(e),z=normalizeZone(priorityStart,p);priorityStart=null;tempPriorityZone=null;priorityPointerId=null;if(z.w<.06||z.h<.06){toast('Zona AI troppo piccola. Riprova.');return;}settings.priorityZone=z;saveSettings();priorityDrawMode=false;if(els.priorityBtn)els.priorityBtn.textContent='🎯 Zona AI';els.priorityHint?.classList.add('hidden');updatePriorityHelp();renderGateQuickMap();toast('Zona AI prioritaria salvata.');drawGuides(currentTracks);return;}
   if(drawZoneMode&&zoneStart){const p=canvasPoint(e);const z=normalizeZone(zoneStart,p);zoneStart=null;tempZone=null;if(z.w<.04||z.h<.04){toast('Zona troppo piccola. Riprova.');return}settings.restrictedZone=z;settings.enableZone=true;$('#enableZone').checked=true;saveSettings();drawZoneMode=false;els.zoneBtn.textContent='▧ Disegna zona';updateZoneHelp();renderGateQuickMap();toast('Zona riservata salvata.');return;}
   if(!nearestGateAtPointer(e))selectTrackAtPointer(e);
 }
-function cancelPointerAction(){draggingLine=false;linePointerId=null;lineDragMode=null;lineDragStart=null;lineDragOriginal=null;lineDragGateId=null;zoneStart=null;tempZone=null;calibrationPointerId=null;drawGuides(currentTracks);}
+function cancelPointerAction(){draggingLine=false;linePointerId=null;lineDragMode=null;lineDragStart=null;lineDragOriginal=null;lineDragGateId=null;zoneStart=null;tempZone=null;priorityStart=null;tempPriorityZone=null;priorityPointerId=null;calibrationPointerId=null;drawGuides(currentTracks);}
 function canvasPoint(e){const {r,sw,sh,scale,ox,oy}=getObjectFitTransform();const sx=(e.clientX-r.left-ox)/scale,sy=(e.clientY-r.top-oy)/scale;return{x:Math.min(1,Math.max(0,sx/sw)),y:Math.min(1,Math.max(0,sy/sh))}}
 function normalizeZone(a,b){return{x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),w:Math.abs(a.x-b.x),h:Math.abs(a.y-b.y)}}
+function cancelPriorityDraw(){priorityDrawMode=false;priorityStart=null;tempPriorityZone=null;priorityPointerId=null;if(els.priorityBtn)els.priorityBtn.textContent='🎯 Zona AI';els.priorityHint?.classList.add('hidden');renderGateQuickMap();}
+function togglePriorityDraw(){
+  if(!running)return;if(priorityDrawMode){cancelPriorityDraw();drawGuides(currentTracks);return;}
+  if(calibrateMode)cancelGateCalibration();drawZoneMode=false;zoneStart=null;tempZone=null;if(els.zoneBtn)els.zoneBtn.textContent='▧ Disegna zona';closePersonInspector();priorityDrawMode=true;if(els.priorityBtn)els.priorityBtn.textContent='✕ Annulla AI';els.priorityHint?.classList.remove('hidden');renderGateQuickMap();drawGuides(currentTracks);toast('Disegna la zona lontana da analizzare con priorità.');
+}
+function clearPriorityZone(){settings.priorityZone=null;saveSettings();cancelPriorityDraw();updatePriorityHelp();drawGuides(currentTracks);toast('Zona AI prioritaria rimossa.');}
+async function configureCameraZoom(){
+  cameraZoomCaps=null;cameraZoomValue=1;const track=stream?.getVideoTracks?.()[0];if(!track){els.cameraZoom?.classList.add('hidden');return;}
+  try{const caps=track.getCapabilities?.()||{},st=track.getSettings?.()||{};if(caps.zoom&&Number.isFinite(caps.zoom.min)&&Number.isFinite(caps.zoom.max)&&caps.zoom.max>caps.zoom.min){cameraZoomCaps={min:caps.zoom.min,max:caps.zoom.max,step:caps.zoom.step||.1};cameraZoomValue=Number.isFinite(st.zoom)?st.zoom:caps.zoom.min;els.cameraZoom?.classList.remove('hidden');updateZoomUi();}else els.cameraZoom?.classList.add('hidden');}catch{els.cameraZoom?.classList.add('hidden');}
+}
+function updateZoomUi(){if(els.zoomLabel)els.zoomLabel.textContent=`${cameraZoomValue.toFixed(cameraZoomValue<2?1:0)}×`;if(cameraZoomCaps){if(els.zoomOutBtn)els.zoomOutBtn.disabled=cameraZoomValue<=cameraZoomCaps.min+.001;if(els.zoomInBtn)els.zoomInBtn.disabled=cameraZoomValue>=cameraZoomCaps.max-.001;}}
+async function changeCameraZoom(dir){if(!cameraZoomCaps)return;const track=stream?.getVideoTracks?.()[0];if(!track)return;const span=cameraZoomCaps.max-cameraZoomCaps.min,step=Math.max(cameraZoomCaps.step,span/8);let v=Math.min(cameraZoomCaps.max,Math.max(cameraZoomCaps.min,cameraZoomValue+dir*step));v=Math.round(v/cameraZoomCaps.step)*cameraZoomCaps.step;try{await track.applyConstraints({advanced:[{zoom:v}]});cameraZoomValue=v;updateZoomUi();}catch(err){console.warn('Zoom hardware non disponibile:',err);toast('Zoom hardware non disponibile su questa fotocamera.');}}
+
 function addGate(){
   if(settings.gates.length>=6){toast('Puoi configurare al massimo 6 varchi.');return;}
   const idx=settings.gates.length;const gate=makeGate(idx);settings.gates.push(gate);settings.activeGateId=gate.id;gateSessionStats.set(gate.id,{entries:0,exits:0});if(running)ensureEditableLineVisible(false);saveSettings();hydrateGateControls();resetLineSides();drawGuides(currentTracks);toast(`${gate.name} creato. Ora puoi calibrarlo.`);
@@ -630,8 +709,8 @@ function resetActiveGate(){
 }
 
 els.startBtn.addEventListener('click',startCamera);els.stopBtn.addEventListener('click',stopCamera);els.switchBtn.addEventListener('click',switchCamera);els.exitViewBtn.addEventListener('click',exitImmersive);
-els.zoneBtn.addEventListener('click',()=>{if(!running)return;if(calibrateMode)cancelGateCalibration();drawZoneMode=!drawZoneMode;els.zoneBtn.textContent=drawZoneMode?'✕ Annulla zona':'▧ Disegna zona';if(!drawZoneMode){zoneStart=null;tempZone=null}renderGateQuickMap();});
-els.gateBtn?.addEventListener('click',startGateCalibration);els.calibrateGateBtn?.addEventListener('click',startGateCalibration);
+els.zoneBtn.addEventListener('click',()=>{if(!running)return;if(calibrateMode)cancelGateCalibration();cancelPriorityDraw();drawZoneMode=!drawZoneMode;els.zoneBtn.textContent=drawZoneMode?'✕ Annulla zona':'▧ Disegna zona';if(!drawZoneMode){zoneStart=null;tempZone=null}renderGateQuickMap();});
+els.gateBtn?.addEventListener('click',startGateCalibration);els.calibrateGateBtn?.addEventListener('click',startGateCalibration);els.priorityBtn?.addEventListener('click',togglePriorityDraw);els.aiModeBtn?.addEventListener('click',cycleDetectionMode);els.clearPriorityBtn?.addEventListener('click',clearPriorityZone);els.zoomOutBtn?.addEventListener('click',()=>changeCameraZoom(-1));els.zoomInBtn?.addEventListener('click',()=>changeCameraZoom(1));
 els.overlay.addEventListener('pointerdown',beginPointerAction);els.overlay.addEventListener('pointermove',movePointerAction);els.overlay.addEventListener('pointerup',endPointerAction);els.overlay.addEventListener('pointercancel',cancelPointerAction);
 els.personInspectorClose?.addEventListener('click',()=>{closePersonInspector();drawGuides(currentTracks)});
 els.followBtn?.addEventListener('click',()=>{if(selectedTrackId==null)return;followTrackId=followTrackId===selectedTrackId?null:selectedTrackId;renderPersonInspector(performance.now(),true);drawGuides(currentTracks);if(navigator.vibrate)navigator.vibrate(25);});
@@ -642,7 +721,7 @@ els.gateEnabled?.addEventListener('change',e=>{const g=activeGate();if(!g)return
 $('#entryDirection')?.addEventListener('change',e=>{const g=activeGate();if(!g)return;g.entryDirection=e.target.value==='reverse'?'reverse':'forward';saveSettings();resetLineSides();drawGuides(currentTracks)});
 $('#allowedDirection')?.addEventListener('change',e=>{const g=activeGate();if(!g)return;g.allowedDirection=e.target.value==='reverse'?'reverse':'forward';saveSettings();resetLineSides();drawGuides(currentTracks)});
 els.addGateBtn?.addEventListener('click',addGate);els.deleteGateBtn?.addEventListener('click',deleteActiveGate);$('#resetLineBtn')?.addEventListener('click',resetActiveGate);
-$('#resetSettingsBtn').addEventListener('click',()=>{settings={...DEFAULT_SETTINGS,gates:[makeGate(0,DEFAULT_SETTINGS.gates?.[0])],activeGateId:'gate-1'};gateSessionStats=new Map(settings.gates.map(g=>[g.id,{entries:0,exits:0}]));if(running)ensureEditableLineVisible(true);else saveSettings();hydrateSettings();if(running)resetLineSides();drawGuides(currentTracks);toast('Impostazioni ripristinate.');});
+$('#resetSettingsBtn').addEventListener('click',()=>{settings={...DEFAULT_SETTINGS,gates:[makeGate(0,DEFAULT_SETTINGS.gates?.[0])],activeGateId:'gate-1'};gateSessionStats=new Map(settings.gates.map(g=>[g.id,{entries:0,exits:0}]));cancelPriorityDraw();if(running)ensureEditableLineVisible(true);else saveSettings();hydrateSettings();if(running)resetLineSides();drawGuides(currentTracks);toast('Impostazioni ripristinate.');});
 $('#resetHeatmapBtn').addEventListener('click',()=>{heatGrid.fill(0);drawHeatmap();toast('Heatmap azzerata.');});
 $('#exportBtn').addEventListener('click',exportCsv);$('#clearBtn').addEventListener('click',async()=>{await clearEvents();renderEvents();toast('Registro azzerato.');});
 window.addEventListener('resize',()=>{resizeCanvas();if(running){ensureEditableLineVisible(true);resetLineSides();drawGuides(currentTracks);}drawHeatmap()});window.addEventListener('beforeunload',stopTracks);

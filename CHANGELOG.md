@@ -1,57 +1,41 @@
+# V2.6 — Long Range
+
+- Aggiunte modalità AI: Veloce, Bilanciata e Lunga distanza.
+- Analisi a crop/settori per aumentare la dimensione relativa delle persone lontane.
+- Aggiunta Zona AI prioritaria disegnabile direttamente sul video.
+- Fusione delle rilevazioni full/crop tramite IoU per ridurre i duplicati.
+- Colori diversi per rilevazioni FULL, LR e LR prioritaria.
+- Badge LIVE con sorgenti di analisi (`AI FULL`, `AI FULL+PRIORITY`, `AI FULL+T1`, ecc.).
+- Pulsante rapido per cambiare modalità AI durante la ripresa.
+- Richiesta fotocamera fino a 1920×1080 come valore ideale.
+- Supporto zoom hardware quando esposto dal browser/dispositivo.
+- Zona AI salvata nelle impostazioni locali e rimovibile dalla dashboard.
+- Cache Service Worker aggiornata a V2.6.
+- Export CSV rinominato per V2.6.
+
 # V2.5
 
-- Barra varchi direttamente nella fotocamera fullscreen.
-- Pulsanti rapidi V1, V2, V3… fino a V6.
-- Selezione del varco attivo senza uscire dalla telecamera.
-- Attivazione/disattivazione del conteggio per singolo varco con un tocco.
-- Conteggi IN/OUT live per ciascun varco nella barra rapida.
-- La barra si nasconde automaticamente durante calibrazione e disegno zona.
-- Indicazione immediata del varco attivo e stato OFF dei varchi disabilitati.
-- Cache Service Worker V2.5.
+- Controllo rapido multi-varco in fullscreen.
+- Selezione e attivazione/disattivazione V1/V2/V3… direttamente sulla telecamera.
 
 # V2.4
 
 - Calibrazione varco con due tocchi.
-- Multi-varco fino a 6 linee indipendenti.
-- Selezione linea dal video e gestione per-varco.
-- Conteggi sessione per singolo varco.
-- Migrazione automatica dalle impostazioni V2.3.
+- Fino a 6 varchi indipendenti.
 
-# Changelog
+# V2.3
 
-## 2.3.0
-- Linea IN/OUT libera: orizzontale, verticale o diagonale
-- Due maniglie A/B per rotazione e ridimensionamento
-- Maniglia centrale per traslazione dell'intero segmento
-- Freccia IN e indicatori LATO 1 / LATO 2
-- Conteggio passaggi basato sull'intersezione reale con il segmento
-- Sospensione e riallineamento conteggi durante l'editing della linea
-- Salvataggio automatico di posizione, angolo e lunghezza
-- Migrazione automatica dalla linea V2.2
-- Pulsante ripristino linea orizzontale
-- Cache Service Worker V2.3
+- Linea IN/OUT libera, ruotabile e spostabile.
 
+# V2.2
 
-## 2.2.0
-- Linea IN/OUT trascinabile sul video con maniglia touch
-- Sospensione conteggi durante lo spostamento della linea
-- Pulsante SEGUI per la persona selezionata
-- Traccia percorso temporale configurabile
-- Rilevamento movimento ripetitivo
-- Rilevamento sosta prolungata nella zona
-- Rilevamento attraversamento in direzione vietata
-- Nuove soglie e badge anomalie
-- Cache Service Worker V2.2
+- Follow persona e traiettoria.
+- Movimento ripetitivo, sosta prolungata in zona e direzione vietata.
 
-## 2.1.0
-- Selezione persona con tocco diretto sul bounding box
-- Scheda LIVE per traccia anonima P#
-- Permanenza, velocità, postura, confidenza, attraversamento e posizione
-- Livello di anomalia per persona e badge evento
+# V2.1
 
-## 2.0.0
-- Modalità fotocamera immersiva a schermo intero
-- MoveNet MultiPose
-- Rilevamento caduta V2
-- Heatmap e permanenza media
-- Rilevamento assembramento locale
+- Scheda persona LIVE.
+
+# V2
+
+- Fullscreen, MoveNet Pose AI, heatmap e rilevamento anomalie esteso.

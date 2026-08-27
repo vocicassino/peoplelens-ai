@@ -1,41 +1,63 @@
-# PeopleLens AI V2.5
+# PeopleLens AI V2.6 — Long Range
 
-PWA per GitHub Pages che usa la fotocamera del telefono per conteggio anonimo, tracking locale e rilevamento di anomalie.
+PWA per conteggio persone, tracking anonimo, varchi IN/OUT e rilevamento anomalie direttamente sul dispositivo. Non esegue riconoscimento facciale e non salva fotografie.
 
-## Novità V2.5
+## Novità V2.6
 
-- **Controllo rapido varchi in fullscreen**: durante la telecamera a schermo intero compare la barra `V1`, `V2`, `V3`… fino a `V6`.
-- Tocca il corpo di un varco per renderlo **attivo** senza uscire dalla fotocamera.
-- Tocca **⏻ / ○** per attivare o disattivare il conteggio del singolo varco.
-- Ogni pulsante mostra in tempo reale i conteggi **IN / OUT** del relativo passaggio.
-- Il varco selezionato è evidenziato sia nella barra sia sulla linea disegnata nel video.
-- La barra si nasconde automaticamente durante **Calibra varco** e **Disegna zona**, così non ostacola i tocchi sul video.
-- Tutte le funzioni multi-varco della V2.4 sono mantenute.
+### 🔭 Long Range AI
+Tre modalità selezionabili anche durante la visualizzazione LIVE:
 
-## Varchi e calibrazione
+- **⚡ Veloce** — analizza il fotogramma completo, ideale per persone vicine e FPS più alti.
+- **⚖ Bilanciata** — fotogramma completo + Zona AI prioritaria; se la zona non è impostata analizza a rotazione anche un settore ingrandito.
+- **🔭 Lunga distanza** — fotogramma completo + Zona AI prioritaria + settori ingranditi a rotazione. È più sensibile alle persone piccole ma usa più potenza e riduce gli FPS.
 
-1. Avvia la fotocamera: l'immagine passa a schermo intero.
-2. Premi **⌁ Calibra varco** e tocca i due estremi reali del passaggio.
-3. Puoi creare fino a **6 varchi indipendenti**.
-4. Ogni varco può essere orizzontale, verticale o diagonale e dispone di direzione IN e direzione consentita proprie.
-5. Trascina **A**, **B** o **✥ SPOSTA** per rifinire la linea.
-6. Usa la barra V1–V6 in fullscreen per passare rapidamente da un varco all'altro o metterne uno OFF.
+Le rilevazioni provenienti da crop ingranditi vengono riportate alle coordinate originali e fuse con NMS/IoU per ridurre i doppi conteggi.
 
-## Funzioni principali
+### 🎯 Zona AI prioritaria
+Premi **Zona AI** e trascina un rettangolo direttamente sul video (ad esempio marciapiede, cancello o ingresso lontano). In modalità Bilanciata/Lunga distanza quel rettangolo viene analizzato separatamente, così una persona lontana occupa una porzione maggiore dell'immagine data al modello.
 
-- COCO-SSD per rilevamento persone e oggetti.
-- MoveNet MultiPose con fallback geometrico.
-- Conteggio persone, ingressi, uscite, presenti stimati, picco e affollamento.
-- Scheda persona LIVE con ID temporaneo, postura, velocità, confidenza e anomalie.
-- Follow e traiettoria temporale.
-- Zona riservata, movimento ripetitivo, sosta prolungata, direzione vietata, possibile caduta/persona a terra, permanenza insolita, movimento rapido, picchi, assembramenti, fuori orario, possibile oggetto incustodito e camera scura/ostruita.
-- Heatmap locale, registro IndexedDB ed esportazione CSV.
-- Nessun riconoscimento facciale e nessuna fotografia salvata.
+Sul video:
+- verde = rilevazione fotogramma completo;
+- azzurro `LR🎯` = rilevazione dalla Zona AI prioritaria;
+- viola `LR` = rilevazione da un settore Long Range;
+- giallo = persona selezionata;
+- rosso = possibile condizione critica/caduta.
 
-## Aggiornamento GitHub Pages
+### 🔍 Zoom hardware
+Se la fotocamera/browser espone la capability `zoom`, compaiono i controlli **− / x / +** in fullscreen. Lo zoom viene applicato alla traccia video reale tramite `MediaStreamTrack.applyConstraints()`. Su dispositivi che non lo espongono i controlli restano nascosti.
 
-Sostituisci i file della versione precedente con quelli di questa cartella, compresa la cartella `icons`. Il Service Worker usa la cache `peoplelens-shell-v2.5.0`. Dopo il deploy chiudi completamente la PWA/browser e riaprila.
+### 📷 Acquisizione
+La fotocamera richiede fino a 1920×1080 come risoluzione ideale. Il browser/telefono può comunque fornire una risoluzione inferiore.
 
-## Nota
+## Funzioni mantenute
 
-Le anomalie sono indicatori probabilistici da verificare e non sostituiscono sistemi di sicurezza certificati o la verifica umana.
+- fullscreen automatico all'avvio;
+- tracking anonimo P1, P2…;
+- scheda LIVE e Follow con traiettoria;
+- fino a 6 varchi indipendenti;
+- linea IN/OUT libera, ruotabile e calibrabile con due tocchi;
+- controllo rapido V1/V2/V3… in fullscreen;
+- conteggio IN/OUT e presenti stimati;
+- Pose AI / MoveNet MultiPose;
+- caduta/persona a terra, permanenza, movimento rapido, zona riservata, aumento improvviso, fuori orario, oggetto incustodito, camera oscurata, assembramento, movimento ripetitivo, sosta in zona e direzione vietata;
+- heatmap locale;
+- registro eventi ed esportazione CSV;
+- PWA installabile.
+
+## Suggerimento per persone lontane
+
+1. Inquadra la zona interessata con la fotocamera posteriore.
+2. Premi **🔭 Lunga distanza**.
+3. Premi **🎯 Zona AI** e disegna un rettangolo solo su strada/marciapiede/varco da controllare.
+4. Se disponibile, usa lo zoom hardware senza esagerare per non restringere troppo il campo.
+5. Mantieni inizialmente la confidenza intorno al 50–55%. Abbassarla troppo aumenta i falsi positivi.
+
+## GitHub Pages
+
+Carica il contenuto della cartella `peoplelens-ai` nella root del repository. In **Settings → Pages** usa `Deploy from a branch`, branch `main`, cartella `/ (root)`.
+
+Il Service Worker V2.6 usa la cache `peoplelens-shell-v2.6.0`. Dopo l'aggiornamento chiudi completamente la PWA/browser e riaprila.
+
+## Limiti
+
+Il Long Range migliora la probabilità di rilevare persone piccole, ma non può ricreare dettagli che la fotocamera non ha registrato. Distanza estrema, controluce, occlusioni, mosso e persone di pochissimi pixel possono ancora non essere rilevati. L'app non è un sistema di sicurezza certificato.

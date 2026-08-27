@@ -1,5 +1,7 @@
 export const DEFAULT_SETTINGS = {
   confidence: 0.55,
+  detectionMode: 'balanced',
+  priorityZone: null,
   maxOccupancy: 50,
   baseOccupancy: 0,
   lineA: {x: 0.08, y: 0.62},
