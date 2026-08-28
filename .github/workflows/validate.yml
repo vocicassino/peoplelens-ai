@@ -1,1 +1,45 @@
+name: Validate PeopleLens
 
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check ES modules
+        shell: bash
+        run: |
+          set -e
+          for f in app.js tracker.js anomalies.js pose.js db.js sync.js control-room.js; do
+            echo "Checking $f as ES module"
+            node --input-type=module --check < "$f"
+          done
+      - name: Check classic scripts
+        run: |
+          node --check sw.js
+          node --check worker/worker.js
+      - name: Verify service worker shell files
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          root = Path('.')
+          text = (root / 'sw.js').read_text()
+          m = re.search(r'const SHELL=\[(.*?)\];', text, re.S)
+          assert m, 'SHELL list not found in sw.js'
+          missing = []
+          for item in re.findall(r"'([^']+)'", m.group(1)):
+              if item == './':
+                  continue
+              p = item[2:] if item.startswith('./') else item
+              if not (root / p).exists():
+                  missing.append(item)
+          assert not missing, f'Missing service-worker files: {missing}'
+          print('Service worker shell OK')
