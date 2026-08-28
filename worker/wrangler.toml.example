@@ -1,1 +1,12 @@
+name = "peoplelens-sync"
+main = "worker.js"
+compatibility_date = "2026-08-01"
 
+[vars]
+ALLOWED_ORIGIN = "https://TUO-UTENTE.github.io"
+# Imposta ROOM_TOKEN come secret nel pannello Cloudflare, non qui.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "peoplelens-sync"
+database_id = "INSERISCI_ID_D1"
