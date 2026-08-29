@@ -17,7 +17,7 @@ Non vengono inviati automaticamente video, foto o ritagli dei volti.
 Per la sincronizzazione è incluso `worker/`, un piccolo Cloudflare Worker con D1. GitHub Pages da solo non può fare da server realtime condiviso.
 
 ### 2. Telecamera di sorveglianza
-PeopleLens V3.0 supporta:
+PeopleLens V3.0.2 supporta:
 - `Fotocamera telefono`
 - `Schermo / finestra` tramite Screen Capture, quando il browser lo supporta
 - `Telecamera IP · HLS`
@@ -51,3 +51,7 @@ GitHub Pages viene servito in HTTPS. Un flusso HLS HTTP può essere bloccato dal
 
 ## Privacy
 Il modulo volto della V3.0 resta di rilevamento/tracking anonimo e non determina l'identità reale delle persone. Le miniature live non vengono archiviate dall'app.
+
+### V3.0.2 — Local Bridge
+Per un PeopleLens Bridge nella stessa rete del telefono puoi usare un URL come `http://192.168.1.40:8888/cam1/index.m3u8`. L’app esegue un test del Bridge e, sui browser compatibili, fa attivare il permesso **Accesso alla rete locale**. Per endpoint non locali continua a essere richiesto HTTPS.
+

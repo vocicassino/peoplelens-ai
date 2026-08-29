@@ -1,3 +1,13 @@
+# V3.0.2 — Local Bridge
+
+- Rimosso il blocco preventivo dei flussi HLS HTTP quando l’URL punta a una rete privata (`192.168.x.x`, `10.x.x.x`, `172.16-31.x.x`, localhost/.local).
+- Aggiunto preflight del Bridge locale prima di avviare HLS.
+- Supporto al permesso browser **Accesso alla rete locale** (`local-network` / alias `local-network-access`) quando disponibile.
+- Il permesso locale, se concesso dal browser, consente ai browser compatibili di rilassare il mixed-content per risorse HTTP LAN.
+- Stato sorgente aggiornato con `Bridge ONLINE` / messaggi diagnostici guidati.
+- Messaggi MediaMTX aggiornati: HTTP LAN è consentito, HTTP pubblico continua a richiedere HTTPS.
+- Cache PWA aggiornata a `peoplelens-shell-v3.0.2`.
+
 # V3.0.1
 
 - Corretto errore bloccante ES module: doppia dichiarazione `stopTracks()` in `app.js`.

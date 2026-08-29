@@ -9,12 +9,12 @@
   <link rel="icon" href="./icons/icon-192.png" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <link rel="stylesheet" href="./styles.css" />
-  <title>PeopleLens AI V3.0.1</title>
+  <title>PeopleLens AI V3.0.2</title>
 </head>
 <body>
   <header class="app-header">
     <div>
-      <div class="brand">PeopleLens <span>AI</span> <em>V3.0</em></div>
+      <div class="brand">PeopleLens <span>AI</span> <em>V3.0.2</em></div>
       <div class="tagline">Conta le persone, non le identità.</div>
     </div>
     <div class="header-actions">
@@ -99,11 +99,12 @@
     </section>
 
     <section class="card source-network-card">
-      <div class="section-head"><div><h2>Sorgente video e rete</h2><p>Usa la fotocamera del telefono, cattura una finestra/schermo oppure analizza una telecamera IP tramite HLS.</p></div><span class="pill">V3.0</span></div>
+      <div class="section-head"><div><h2>Sorgente video e rete</h2><p>Usa la fotocamera del telefono, cattura una finestra/schermo oppure analizza una telecamera IP tramite HLS.</p></div><span class="pill">V3.0.2</span></div>
       <div class="source-grid">
         <label>Sorgente video<select id="videoSource"><option value="camera">📷 Fotocamera telefono</option><option value="screen">🖥️ Schermo / finestra (desktop)</option><option value="hls">📡 Telecamera IP · HLS</option></select></label>
         <label>Nome sorgente<input id="sourceLabel" type="text" maxlength="40" placeholder="Es. Ingresso principale"></label>
-        <label class="source-url-field">URL HLS / bridge<input id="remoteStreamUrl" type="url" inputmode="url" placeholder="https://bridge.example.com/cam1/index.m3u8"></label>
+        <label class="source-url-field">URL HLS / bridge<input id="remoteStreamUrl" type="url" inputmode="url" placeholder="http://192.168.1.40:8888/cam1/index.m3u8"></label>
+        <button id="bridgeTestBtn" class="ghost source-test-btn" type="button">🔎 Test Bridge LAN</button>
         <div class="source-status"><small>STATO SORGENTE</small><strong id="sourceStatus">Pronta · fotocamera telefono</strong></div>
       </div>
       <div class="source-help" id="sourceHelp">Per telecamere RTSP/ONVIF usa un bridge locale (es. MediaMTX) che esponga HLS/WebRTC al browser. PeopleLens deve poter leggere i pixel del video: il server deve consentire CORS.</div>
@@ -118,14 +119,14 @@
           <label>Password ONVIF<input id="onvifPassword" type="password" autocomplete="new-password" placeholder="Password impostata in ONVIF"></label>
           <label>Porta RTSP<input id="rtspPort" type="number" min="1" max="65535" value="8554"></label>
           <label>Canale<select id="rtspChannel"><option value="101">101 · principale</option><option value="102">102 · secondario</option></select></label>
-          <label class="onvif-wide">URL HTTPS del bridge<input id="bridgeBaseUrl" type="url" inputmode="url" placeholder="https://bridge.example.com"></label>
+          <label class="onvif-wide">URL del bridge (HTTPS o HTTP LAN)<input id="bridgeBaseUrl" type="url" inputmode="url" placeholder="http://192.168.1.40:8888"></label>
         </div>
         <div class="onvif-actions"><button id="buildRtspBtn" class="ghost" type="button">Genera configurazione</button><button id="downloadBridgeBtn" class="ghost" type="button" disabled>Scarica mediamtx.yml</button><button id="useGeneratedHlsBtn" class="primary" type="button" disabled>Usa HLS in PeopleLens</button></div>
         <div id="rtspConfigResult" class="rtsp-config-result hidden">
           <label>RTSP telecamera<input id="rtspPreview" type="text" readonly></label>
           <label>HLS per PeopleLens<input id="hlsPreview" type="text" readonly></label>
           <label>Configurazione MediaMTX<textarea id="mediamtxPreview" rows="10" readonly></textarea></label>
-          <p id="bridgeWarning">GitHub Pages usa HTTPS: anche il bridge deve essere raggiungibile in HTTPS con un certificato accettato dal telefono.</p>
+          <p id="bridgeWarning">Per un Bridge nella rete locale puoi usare HTTP su IP privato. Chrome può chiedere il permesso Accesso alla rete locale: scegli Consenti.</p>
         </div>
       </details>
 
@@ -157,7 +158,7 @@
     </section>
 
     <section class="card vehicle-transit-section">
-      <div class="section-head"><div><h2>Transiti veicoli</h2><p>Conteggio indipendente IN/OUT attraverso i varchi configurati. I veicoli non modificano il numero di persone presenti.</p></div><span class="pill">V3.0</span></div>
+      <div class="section-head"><div><h2>Transiti veicoli</h2><p>Conteggio indipendente IN/OUT attraverso i varchi configurati. I veicoli non modificano il numero di persone presenti.</p></div><span class="pill">V3.0.2</span></div>
       <div class="vehicle-transit-grid">
         <article class="vehicle-transit-card"><span class="vehicle-icon">🚗</span><div><b>AUTO</b><strong><span id="carEntries">0</span> IN · <span id="carExits">0</span> OUT</strong><small>Oggi: <span id="carTodayEntries">0</span> IN · <span id="carTodayExits">0</span> OUT</small></div></article>
         <article class="vehicle-transit-card"><span class="vehicle-icon">🏍️</span><div><b>MOTO</b><strong><span id="motorcycleEntries">0</span> IN · <span id="motorcycleExits">0</span> OUT</strong><small>Oggi: <span id="motorcycleTodayEntries">0</span> IN · <span id="motorcycleTodayExits">0</span> OUT</small></div></article>
@@ -267,7 +268,7 @@
 
     <section class="card info-card">
       <h2>Limiti importanti</h2>
-      <p>PeopleLens AI V3.0.1 è uno strumento di supporto: conteggio e anomalie possono sbagliare per occlusioni, luce, prospettiva o prestazioni del telefono. “Possibile caduta”, “movimento rapido” e “oggetto incustodito” non sostituiscono sistemi di sicurezza certificati né la verifica umana. Il modulo volto effettua solo rilevamento/tracking anonimo e non riconoscimento dell’identità.</p>
+      <p>PeopleLens AI V3.0.2 è uno strumento di supporto: conteggio e anomalie possono sbagliare per occlusioni, luce, prospettiva o prestazioni del telefono. “Possibile caduta”, “movimento rapido” e “oggetto incustodito” non sostituiscono sistemi di sicurezza certificati né la verifica umana. Il modulo volto effettua solo rilevamento/tracking anonimo e non riconoscimento dell’identità.</p>
     </section>
   </main>
 

@@ -8,7 +8,7 @@ const $ = s => document.querySelector(s);
 const els = {
   video: $('#video'), overlay: $('#overlay'), cameraWrap: $('#cameraWrap'), emptyCamera: $('#emptyCamera'),
   startBtn: $('#startBtn'), stopBtn: $('#stopBtn'), switchBtn: $('#switchBtn'), zoneBtn: $('#zoneBtn'), gateBtn: $('#gateBtn'), priorityBtn: $('#priorityBtn'), aiModeBtn: $('#aiModeBtn'), installBtn: $('#installBtn'), exitViewBtn: $('#exitViewBtn'),
-  videoSource: $('#videoSource'), sourceLabel: $('#sourceLabel'), remoteStreamUrl: $('#remoteStreamUrl'), sourceStatus: $('#sourceStatus'), sourceHelp: $('#sourceHelp'), sourceBadge: $('#sourceBadge'),
+  videoSource: $('#videoSource'), sourceLabel: $('#sourceLabel'), remoteStreamUrl: $('#remoteStreamUrl'), sourceStatus: $('#sourceStatus'), sourceHelp: $('#sourceHelp'), sourceBadge: $('#sourceBadge'), bridgeTestBtn: $('#bridgeTestBtn'),
   cameraPreset: $('#cameraPreset'), lanCameraIp: $('#lanCameraIp'), rtspUser: $('#rtspUser'), onvifPassword: $('#onvifPassword'), rtspPort: $('#rtspPort'), rtspChannel: $('#rtspChannel'), bridgeBaseUrl: $('#bridgeBaseUrl'), buildRtspBtn: $('#buildRtspBtn'), downloadBridgeBtn: $('#downloadBridgeBtn'), useGeneratedHlsBtn: $('#useGeneratedHlsBtn'), rtspConfigResult: $('#rtspConfigResult'), rtspPreview: $('#rtspPreview'), hlsPreview: $('#hlsPreview'), mediamtxPreview: $('#mediamtxPreview'), bridgeWarning: $('#bridgeWarning'),
   enableSync: $('#enableSync'), syncNodeName: $('#syncNodeName'), syncRoom: $('#syncRoom'), syncEndpoint: $('#syncEndpoint'), syncToken: $('#syncToken'), syncStatus: $('#syncStatus'), syncDot: $('#syncDot'), syncTestBtn: $('#syncTestBtn'),
   modelBadge: $('#modelBadge'), liveBadge: $('#liveBadge'), fpsBadge: $('#fpsBadge'), poseBadge: $('#poseBadge'), scanBadge: $('#scanBadge'), cameraHud: $('#cameraHud'),
@@ -212,14 +212,71 @@ function sourceMeta(type=sourceConfig.type){
     type==='screen'?{icon:'🖥️',short:'SCHERMO',label:'Schermo / finestra'}:
     {icon:'📷',short:'TELEFONO',label:'Fotocamera telefono'};
 }
+function isPrivateLanHost(hostname){
+  const h=String(hostname||'').toLowerCase();
+  if(h==='localhost'||h.endsWith('.local'))return true;
+  if(/^127\./.test(h)||/^169\.254\./.test(h)||/^192\.168\./.test(h)||/^10\./.test(h))return true;
+  const m=h.match(/^172\.(\d{1,3})\./);return !!(m&&Number(m[1])>=16&&Number(m[1])<=31);
+}
+function isLocalHttpUrl(value){
+  try{const u=new URL(String(value||''),location.href);return u.protocol==='http:'&&isPrivateLanHost(u.hostname)}catch{return false}
+}
+async function queryLocalNetworkPermission(){
+  if(!navigator.permissions?.query)return 'unsupported';
+  for(const name of ['local-network','local-network-access']){
+    try{const r=await navigator.permissions.query({name});if(r?.state)return r.state}catch{}
+  }
+  return 'unsupported';
+}
+async function probeLocalBridge(url,{quiet=false}={}){
+  if(!isLocalHttpUrl(url))return{ok:true,local:false,status:'not-local'};
+  let permission=await queryLocalNetworkPermission();
+  if(permission==='denied')throw new Error('Accesso alla rete locale negato. In Chrome apri Impostazioni sito > Rete locale e scegli Consenti.');
+  const init={method:'GET',mode:'cors',cache:'no-store',credentials:'omit'};
+  try{if(typeof Request!=='undefined'&&'targetAddressSpace' in Request.prototype)init.targetAddressSpace='local'}catch{}
+  try{
+    const u=new URL(url);u.searchParams.set('peoplelens_probe',Date.now().toString());
+    const res=await fetch(u.toString(),init);
+    permission=await queryLocalNetworkPermission();
+    if(!res.ok)throw new Error(`Bridge HTTP ${res.status}`);
+    if(!quiet)toast('Bridge locale raggiungibile.');
+    return{ok:true,local:true,status:'online',permission};
+  }catch(err){
+    permission=await queryLocalNetworkPermission();
+    if(permission==='denied')throw new Error('Accesso alla rete locale negato. Consenti PeopleLens nelle autorizzazioni del sito e riprova.');
+    const msg=String(err?.message||err||'');
+    if(/Failed to fetch|NetworkError|Load failed|fetch/i.test(msg))throw new Error('Bridge locale non raggiungibile. Verifica che PC e telefono siano sulla stessa rete, MediaMTX sia avviato, Firewall consenta la porta 8888 e concedi Accesso alla rete locale quando Chrome lo chiede.');
+    throw err;
+  }
+}
+async function testBridgeFromUi(){
+  readSourceUi();
+  const url=sourceConfig.url.trim();
+  if(sourceConfig.type!=='hls'){toast('Seleziona prima Telecamera IP · HLS.');return;}
+  if(!url){toast('Inserisci l’URL HLS del Bridge.');return;}
+  if(!isLocalHttpUrl(url)){toast('Il test LAN è previsto per URL HTTP locali, ad esempio 192.168.x.x.');return;}
+  if(els.bridgeTestBtn)els.bridgeTestBtn.disabled=true;
+  try{
+    setSourceRuntimeStatus('Test Bridge LAN…','testing');
+    const result=await probeLocalBridge(url,{quiet:true});
+    setSourceRuntimeStatus(`Bridge ONLINE · ${new URL(url).hostname}`,'online');
+    toast(result.permission==='granted'?'Bridge ONLINE · accesso LAN consentito.':'Bridge ONLINE.');
+  }catch(err){
+    setSourceRuntimeStatus(`Bridge OFFLINE · ${err.message||err}`,'error');
+    toast(err.message||String(err));
+  }finally{if(els.bridgeTestBtn)els.bridgeTestBtn.disabled=false}
+}
 function updateSourceUi(){
   const m=sourceMeta(sourceConfig.type);
-  if(els.sourceStatus)els.sourceStatus.textContent=`Pronta · ${sourceConfig.label||m.label}`;
+  const localHls=sourceConfig.type==='hls'&&isLocalHttpUrl(sourceConfig.url);
+  if(els.sourceStatus)els.sourceStatus.textContent=localHls?`Pronta · Bridge LAN · ${sourceConfig.label||m.label}`:`Pronta · ${sourceConfig.label||m.label}`;
   const hls=sourceConfig.type==='hls';
   if(els.remoteStreamUrl)els.remoteStreamUrl.closest('label')?.classList.toggle('muted-field',!hls);
   if(els.sourceHelp){
     els.sourceHelp.textContent=hls
-      ? 'HLS deve essere HTTPS quando PeopleLens è aperta da GitHub Pages HTTPS e deve consentire CORS. Se la telecamera espone solo RTSP/ONVIF usa il bridge MediaMTX incluso nel pacchetto.'
+      ? (localHls
+          ? 'Bridge locale HTTP rilevato. Premi Avvia: PeopleLens testerà il bridge e Chrome potrà chiedere il permesso Accesso alla rete locale. Scegli Consenti. Il bridge deve consentire CORS.'
+          : 'Per HLS remoto usa HTTPS e abilita CORS sul server. Per RTSP/ONVIF usa PeopleLens Bridge / MediaMTX.')
       : sourceConfig.type==='screen'
         ? 'Modalità desktop: il browser chiederà quale finestra, scheda o schermo condividere. Non può partire automaticamente senza autorizzazione dell’utente.'
         : 'La fotocamera del telefono continua a essere elaborata localmente come nelle versioni precedenti.';
@@ -257,8 +314,12 @@ function buildRtspBridgeConfig(announce=true){
   if(els.downloadBridgeBtn)els.downloadBridgeBtn.disabled=false;
   if(els.useGeneratedHlsBtn)els.useGeneratedHlsBtn.disabled=!base;
   if(els.bridgeWarning)els.bridgeWarning.textContent=base
-    ? (base.startsWith('https://')?'Bridge HTTPS configurato. Dopo aver avviato MediaMTX, prova il flusso con PeopleLens.':'Attenzione: GitHub Pages HTTPS blocca normalmente un bridge HTTP. Usa HTTPS per il bridge.')
-    : 'Inserisci l’URL HTTPS pubblico/locale del bridge per poter usare automaticamente il flusso in PeopleLens.';
+    ? (base.startsWith('https://')
+        ? 'Bridge HTTPS configurato. Dopo aver avviato MediaMTX, prova il flusso con PeopleLens.'
+        : isLocalHttpUrl(`${base}/cam1/index.m3u8`)
+          ? 'Bridge HTTP sulla rete locale rilevato. Chrome può chiedere Accesso alla rete locale: scegli Consenti. PeopleLens testerà il bridge prima di avviare l’AI.'
+          : 'Bridge HTTP non locale: usa HTTPS.')
+    : 'Inserisci l’URL del bridge. Sono accettati HTTPS oppure HTTP su IP privato della rete locale (es. 192.168.x.x).';
   if(announce)toast('Configurazione RTSP/MediaMTX generata.');
   return{rtsp,hls,yml,base};
 }
@@ -269,7 +330,7 @@ function downloadGeneratedBridge(){
   toast('File mediamtx.yml creato.');
 }
 function useGeneratedHls(){
-  const cfg=buildRtspBridgeConfig(false);if(!cfg||!cfg.base){toast('Inserisci prima l’URL HTTPS del bridge.');return;}
+  const cfg=buildRtspBridgeConfig(false);if(!cfg||!cfg.base){toast('Inserisci prima l’URL del bridge.');return;}
   sourceConfig.type='hls';sourceConfig.url=cfg.hls;
   if(!sourceConfig.label)sourceConfig.label='Telecamera IP';
   saveSourceConfig();hydrateSourceUi();toast('Sorgente HLS impostata. Premi Avvia.');
@@ -315,7 +376,14 @@ async function startScreenSource(){
 async function startHlsSource(){
   const url=sourceConfig.url.trim();
   if(!url)throw new Error('Inserisci l’URL HLS della telecamera');
-  if(location.protocol==='https:'&&url.toLowerCase().startsWith('http://'))throw new Error('GitHub Pages HTTPS blocca flussi HLS HTTP: usa HTTPS');
+  let parsed;try{parsed=new URL(url,location.href)}catch{throw new Error('URL HLS non valido')}
+  const localHttp=isLocalHttpUrl(parsed.toString());
+  if(location.protocol==='https:'&&parsed.protocol==='http:'&&!localHttp)throw new Error('Un flusso HTTP pubblico/non locale è bloccato da HTTPS: usa HTTPS oppure un Bridge nella rete locale.');
+  if(localHttp){
+    setSourceRuntimeStatus('Test Bridge LAN…','testing');
+    await probeLocalBridge(parsed.toString());
+    setSourceRuntimeStatus(`Bridge ONLINE · ${parsed.hostname}`,'online');
+  }
   els.video.crossOrigin='anonymous';els.video.srcObject=null;
   if(els.video.canPlayType('application/vnd.apple.mpegurl')){
     els.video.src=url;await els.video.play().catch(()=>{});await waitForVideoReady(15000);await els.video.play();
@@ -336,6 +404,7 @@ async function startHlsSource(){
   const probe=document.createElement('canvas');probe.width=2;probe.height=2;
   const ctx=probe.getContext('2d');ctx.drawImage(els.video,0,0,2,2);
   try{ctx.getImageData(0,0,1,1)}catch{throw new Error('Il flusso video non consente accesso ai pixel (CORS)')}
+  if(localHttp)setSourceRuntimeStatus(`Bridge ONLINE · ${parsed.hostname}`,'online');
 }
 async function startSelectedSource(){
   currentSourceType=sourceConfig.type;
@@ -385,7 +454,7 @@ function buildSyncPayload(){
   const motos=currentVehicleTracks.filter(v=>v.class==='motorcycle').length;
   const bikes=currentVehicleTracks.filter(v=>v.class==='bicycle').length;
   return{
-    appVersion:'3.0.1',
+    appVersion:'3.0.2',
     running,
     source:{type:currentSourceType,label:sourceConfig.label||sourceMeta(currentSourceType).label},
     stats:{visible,occupancy,entries,exits,peak,cars,motorcycles:motos,bicycles:bikes,faces:currentFaceTracks.length},
@@ -397,7 +466,7 @@ function buildSyncPayload(){
 function configureSyncClient(){syncClient.configure(syncConfig,buildSyncPayload);}
 
 async function loadModels(){
-  els.modelBadge.textContent='Caricamento AI V3.0.1…'; els.modelBadge.className='pill warn';
+  els.modelBadge.textContent='Caricamento AI V3.0.2…'; els.modelBadge.className='pill warn';
   try{
     await tf.ready(); try{await tf.setBackend('webgl')}catch{}
     model=await cocoSsd.load({base:'lite_mobilenet_v2'});
@@ -418,7 +487,7 @@ async function loadModels(){
     console.warn('Face detection non disponibile:',err); faceLoadFailed=true; faceReady=false;
     if(els.faceModelStatus){els.faceModelStatus.textContent='Face AI non disponibile';els.faceModelStatus.className='pill warn';}
   }
-  els.modelBadge.textContent=`AI V3.0.1 pronta · ${tf.getBackend()}${faceReady?' · FACE':''}`; els.modelBadge.className='pill ok';
+  els.modelBadge.textContent=`AI V3.0.2 pronta · ${tf.getBackend()}${faceReady?' · FACE':''}`; els.modelBadge.className='pill ok';
 }
 
 async function enterImmersive(){
@@ -923,7 +992,7 @@ function toast(msg){els.toast.textContent=msg;els.toast.classList.add('show');cl
 
 async function exportCsv(){
   const ev=await getEvents(10000);const rows=[['data','ora','tipo','gravita','varco','classe_veicolo','direzione_veicolo','messaggio','visibili_persone','presenti_stimati','persone_entrate','persone_uscite','auto_in','auto_out','moto_in','moto_out','bici_in','bici_out'],...ev.slice().reverse().map(e=>{const d=new Date(e.ts);return[d.toLocaleDateString('it-IT'),d.toLocaleTimeString('it-IT'),e.type,e.severity,e.gateName||'',e.vehicleClass||'',e.vehicleDirection||'',e.message,e.visible,e.occupancy,e.entries,e.exits,e.carIn??'',e.carOut??'',e.motorcycleIn??'',e.motorcycleOut??'',e.bicycleIn??'',e.bicycleOut??'']})];
-  const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='peoplelens-v3.0.1-eventi-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='peoplelens-v3.0.2-eventi-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
 function getObjectFitTransform(){
@@ -1047,6 +1116,7 @@ els.cameraPreset?.addEventListener('change',()=>{applyCameraPreset();});
 els.buildRtspBtn?.addEventListener('click',()=>buildRtspBridgeConfig(true));
 els.downloadBridgeBtn?.addEventListener('click',downloadGeneratedBridge);
 els.useGeneratedHlsBtn?.addEventListener('click',useGeneratedHls);
+els.bridgeTestBtn?.addEventListener('click',testBridgeFromUi);
 for(const el of [els.enableSync,els.syncNodeName,els.syncRoom,els.syncEndpoint,els.syncToken]){el?.addEventListener('change',readSyncUi);if(el!==els.enableSync)el?.addEventListener('input',()=>{syncConfig.nodeName=String(els.syncNodeName?.value||'').trim().slice(0,40);syncConfig.room=String(els.syncRoom?.value||'').trim().slice(0,40);syncConfig.endpoint=String(els.syncEndpoint?.value||'').trim().replace(/\/+$/,'');syncConfig.token=String(els.syncToken?.value||'');saveSyncConfig();});}
 els.syncTestBtn?.addEventListener('click',async()=>{readSyncUi();if(!syncConfig.enabled){toast('Attiva “Collega questo nodo” prima del test.');return;}try{updateSyncStatus({state:'testing',message:'Test connessione…'});await syncClient.test();toast('Control Room raggiungibile.');}catch(err){toast(`Sync non riuscita: ${err.message||err}`);}});
 els.startBtn.addEventListener('click',startCamera);els.stopBtn.addEventListener('click',stopCamera);els.switchBtn.addEventListener('click',switchCamera);els.exitViewBtn.addEventListener('click',exitImmersive);

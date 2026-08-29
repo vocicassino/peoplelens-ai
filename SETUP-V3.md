@@ -1,4 +1,4 @@
-# PeopleLens AI V3.0 — Setup rapido
+# PeopleLens AI V3.0.2 — Setup rapido
 
 ## A. Solo più telefoni
 1. Pubblica la cartella principale su GitHub Pages.
@@ -53,4 +53,5 @@ Questa modalità richiede un'autorizzazione esplicita ogni volta e non è garant
    - URL principale: `rtsp://admin:PASSWORD@IP:8554/Streaming/Channels/101`
 5. In PeopleLens apri `Configura telecamera ONVIF / RTSP`, inserisci IP e password e premi `Genera configurazione`.
 6. Avvia MediaMTX usando il file `mediamtx.yml` generato.
-7. Esporre il bridge in HTTPS è necessario se PeopleLens è pubblicata su GitHub Pages HTTPS.
+7. Se il Bridge è nella LAN puoi usare `http://192.168.x.x:8888`: su browser compatibili PeopleLens richiede **Accesso alla rete locale** e, se concesso, il browser può consentire il mixed-content LAN. Per bridge pubblici/remoti resta necessario HTTPS.
+8. MediaMTX deve consentire CORS per l’origine GitHub Pages di PeopleLens.
