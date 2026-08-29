@@ -10,50 +10,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
       - name: Check ES modules
         shell: bash
         run: |
           set -e
           for f in app.js tracker.js anomalies.js pose.js db.js sync.js control-room.js; do
-            if [ -f "$f" ]; then
-              echo "Checking $f as ES module"
-              node --input-type=module --check < "$f"
-            else
-              echo "Skipping missing optional module: $f"
-            fi
+            echo "Checking $f as ES module"
+            node --input-type=module --check < "$f"
           done
-
       - name: Check classic scripts
-        shell: bash
         run: |
-          set -e
-          echo "Checking service worker"
           node --check sw.js
-
-          if [ -f "worker/worker.js" ]; then
-            echo "Checking Cloudflare Worker"
-            node --check worker/worker.js
-          else
-            echo "worker/worker.js not present - skipping optional Worker check"
-          fi
-
+          node --check worker/worker.js
       - name: Verify service worker shell files
         shell: python
         run: |
           from pathlib import Path
           import re
-
           root = Path('.')
           text = (root / 'sw.js').read_text()
-
           m = re.search(r'const SHELL=\[(.*?)\];', text, re.S)
           assert m, 'SHELL list not found in sw.js'
-
           missing = []
           for item in re.findall(r"'([^']+)'", m.group(1)):
               if item == './':
@@ -61,6 +41,5 @@ jobs:
               p = item[2:] if item.startswith('./') else item
               if not (root / p).exists():
                   missing.append(item)
-
           assert not missing, f'Missing service-worker files: {missing}'
           print('Service worker shell OK')
