@@ -6,16 +6,17 @@ Inserisci direttamente l'URL `.m3u8` in PeopleLens.
 ## Telecamera RTSP / ONVIF
 I browser non leggono normalmente RTSP direttamente. Avvia MediaMTX su un PC, mini-PC o Raspberry Pi nella stessa rete della telecamera e configura `mediamtx.yml`.
 
-MediaMTX legge RTSP e lo rende disponibile al browser come HLS o WebRTC. PeopleLens V3.0 usa HLS per poter analizzare direttamente il tag `<video>`.
+MediaMTX legge RTSP e lo rende disponibile al browser come HLS o WebRTC. PeopleLens V3.0.2 usa HLS per poter analizzare direttamente il tag `<video>`.
 
 Esempio:
 - camera: `rtsp://user:pass@192.168.1.50:554/...`
 - MediaMTX: path `cam1`
 - PeopleLens: `https://bridge.example.com/cam1/index.m3u8`
 
-## HTTPS e CORS
-GitHub Pages è HTTPS. Un URL HLS `http://...` può essere bloccato come mixed content.
-Il bridge deve quindi essere raggiungibile in HTTPS e deve autorizzare l'origine GitHub Pages tramite CORS.
+## HTTP LAN, HTTPS e CORS
+PeopleLens V3.0.2 accetta un Bridge HTTP quando l'host è privato (`192.168.x.x`, `10.x.x.x`, `172.16-31.x.x`). Nei browser compatibili viene richiesto il permesso **Accesso alla rete locale**; se concesso, il browser può rilassare il blocco mixed-content per la LAN.
+
+Per bridge pubblici/remoti usa HTTPS. In ogni caso MediaMTX deve autorizzare l'origine GitHub Pages tramite CORS.
 
 ## Sicurezza
 Non aprire la porta RTSP della telecamera direttamente verso Internet.
